@@ -1,0 +1,288 @@
+.code-viewer {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.code-viewer-header {
+  background: #f6f8fa;
+  padding: 1rem;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.code-viewer-header h3 {
+  margin: 0 0 0.25rem 0;
+  color: #333;
+  font-size: 1rem;
+}
+
+.code-viewer-subtitle {
+  margin: 0;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.files-diff-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-diff {
+  border-bottom: 1px solid #e1e4e8;
+  transition: background-color 0.2s;
+}
+
+.file-diff:last-child {
+  border-bottom: none;
+}
+
+.file-diff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f6f8fa;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.file-diff-header:hover {
+  background: #f0f2f5;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.file-name {
+  color: #333;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+  flex: 1;
+}
+
+.status-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.status-badge.added {
+  background: #4caf50;
+}
+
+.status-badge.removed {
+  background: #f44336;
+}
+
+.status-badge.modified {
+  background: #2196f3;
+}
+
+.status-badge.renamed {
+  background: #ff9800;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: 1rem;
+  flex-shrink: 0;
+}
+
+.file-changes {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.additions {
+  color: #4caf50;
+}
+
+.deletions {
+  color: #f44336;
+}
+
+.btn-github {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: transform 0.2s;
+}
+
+.btn-github:hover {
+  transform: scale(1.2);
+}
+
+.expand-icon {
+  color: #666;
+  font-size: 0.8rem;
+  transition: transform 0.2s;
+}
+
+.file-diff-content {
+  background: white;
+  border-top: 1px solid #e1e4e8;
+}
+
+.file-added-notice,
+.file-removed-notice {
+  padding: 2rem;
+  text-align: center;
+  background: #f6f8fa;
+  color: #666;
+}
+
+.file-added-notice p,
+.file-removed-notice p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.diff-viewer {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  background: white;
+  overflow-x: auto;
+}
+
+.diff-line {
+  display: flex;
+  padding: 0;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.diff-line:hover {
+  background-color: #f9f9f9;
+}
+
+.diff-line.added {
+  background-color: #f0f8f0;
+}
+
+.diff-line.added:hover {
+  background-color: #e8f5e8;
+}
+
+.diff-line.removed {
+  background-color: #f8f0f0;
+}
+
+.diff-line.removed:hover {
+  background-color: #f5e8e8;
+}
+
+.diff-line.context {
+  background-color: white;
+}
+
+.diff-line.header {
+  background-color: #f0f0f0;
+  color: #666;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+}
+
+.line-marker {
+  display: inline-block;
+  width: 2rem;
+  text-align: center;
+  color: #999;
+  background-color: #f6f8fa;
+  user-select: none;
+  flex-shrink: 0;
+  border-right: 1px solid #e1e4e8;
+}
+
+.diff-line.added .line-marker {
+  color: #4caf50;
+  background-color: #f0f8f0;
+}
+
+.diff-line.removed .line-marker {
+  color: #f44336;
+  background-color: #f8f0f0;
+}
+
+.line-content {
+  flex: 1;
+  padding: 0 1rem;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: block;
+}
+
+.diff-line.added .line-content {
+  color: #2d5016;
+}
+
+.diff-line.removed .line-content {
+  color: #5d1f1a;
+}
+
+.no-diff {
+  padding: 2rem;
+  text-align: center;
+  background: #f9f9f9;
+  color: #999;
+}
+
+.no-diff p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .file-diff-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .file-actions {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .file-info {
+    width: 100%;
+  }
+
+  .diff-viewer {
+    font-size: 0.75rem;
+  }
+
+  .line-marker {
+    width: 1.5rem;
+  }
+
+  .line-content {
+    padding: 0 0.5rem;
+  }
+}

@@ -1,0 +1,269 @@
+.commit-diff-container {
+  margin-top: 1rem;
+}
+
+.btn-view-diff {
+  padding: 0.5rem 1rem;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-view-diff:hover:not(:disabled) {
+  background: #efefef;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.btn-view-diff:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.diff-error {
+  color: #c33;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0 0;
+}
+
+.diff-details {
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.diff-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #ddd;
+}
+
+.diff-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.btn-close:hover {
+  color: #333;
+}
+
+.diff-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border-left: 4px solid #667eea;
+  text-align: center;
+}
+
+.stat.additions {
+  border-left-color: #4caf50;
+}
+
+.stat.deletions {
+  border-left-color: #f44336;
+}
+
+.stat-label {
+  display: block;
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  display: block;
+  color: #333;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.files-list {
+  margin-bottom: 1.5rem;
+}
+
+.files-title {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.file-item {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-left: 4px solid #ddd;
+}
+
+.file-item.added {
+  border-left-color: #4caf50;
+}
+
+.file-item.removed {
+  border-left-color: #f44336;
+}
+
+.file-item.modified {
+  border-left-color: #2196f3;
+}
+
+.file-item.renamed {
+  border-left-color: #ff9800;
+}
+
+.file-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge.added {
+  background: #4caf50;
+}
+
+.status-badge.removed {
+  background: #f44336;
+}
+
+.status-badge.modified {
+  background: #2196f3;
+}
+
+.status-badge.renamed {
+  background: #ff9800;
+}
+
+.filename {
+  color: #333;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-all;
+  flex: 1;
+}
+
+.file-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.additions {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.deletions {
+  color: #f44336;
+  font-weight: 600;
+}
+
+.suggestion-box {
+  background: white;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.suggestion-title {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.suggestion-text {
+  margin: 0 0 1rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.suggestion-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.suggestion-item {
+  background: #f5f5f5;
+  border-left: 3px solid #667eea;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+}
+
+.suggestion-item code {
+  color: #333;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .diff-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .file-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .filename {
+    width: 100%;
+  }
+}
