@@ -323,7 +323,7 @@ function App() {
                 margin: "0 auto 5rem auto",
               }}
             >
-              <div
+              {/* <div
                 style={{
                   display: "inline-block",
                   padding: "0.5rem 1rem",
@@ -338,7 +338,7 @@ function App() {
                 }}
               >
                 ✨ AI-Powered Git Analysis
-              </div>
+              </div> */}
               <h1
                 style={{
                   fontSize: "4.5rem",
