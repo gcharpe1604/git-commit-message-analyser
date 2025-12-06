@@ -1,6 +1,7 @@
 import { FcFlashOn } from "react-icons/fc";
 import { FaGamepad } from "react-icons/fa";
 import { MdInsights } from "react-icons/md";
+import { MdHistory } from "react-icons/md";
 import { useState } from "react";
 import "./App.css";
 import { InputSection } from "./components/InputSection";
@@ -302,7 +303,7 @@ function App() {
             className="btn-secondary"
             aria-label="View Analysis History"
           >
-            <span>📜</span> History
+            {<MdHistory />} History
           </button>
           <ThemeToggle />
         </div>

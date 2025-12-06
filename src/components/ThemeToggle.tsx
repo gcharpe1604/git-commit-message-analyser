@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { MdDarkMode } from "react-icons/md";
+import { CiLight } from "react-icons/ci";
 
 export const ThemeToggle = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -30,7 +32,7 @@ export const ThemeToggle = () => {
           transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
-        {theme === "light" ? "☀️" : "🌙"}
+        {theme === "light" ? <MdDarkMode /> : <CiLight />}
       </span>
       <span>{theme === "light" ? "Light Mode" : "Dark Mode"}</span>
     </button>
