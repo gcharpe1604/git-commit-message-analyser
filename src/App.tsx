@@ -1,3 +1,6 @@
+import { FcFlashOn } from "react-icons/fc";
+import { FaGamepad } from "react-icons/fa";
+import { MdInsights } from "react-icons/md";
 import { useState } from "react";
 import "./App.css";
 import { InputSection } from "./components/InputSection";
@@ -396,17 +399,17 @@ function App() {
               }}
             >
               <FeatureCard
-                icon="⚡️"
+                icon={<FcFlashOn />}
                 title="Instant Analysis"
                 desc="Get immediate scoring and actionable feedback to improve your commit messages."
               />
               <FeatureCard
-                icon="🏆"
+                icon={<FaGamepad />}
                 title="Gamification"
                 desc="Unlock badges and achievements as you adopt best practices and maintain consistency."
               />
               <FeatureCard
-                icon="📊"
+                icon={<MdInsights />}
                 title="Deep Insights"
                 desc="Visualize your coding habits, time distribution, and project velocity."
               />
@@ -565,7 +568,7 @@ const FeatureCard = ({
   title,
   desc,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   desc: string;
 }) => (
