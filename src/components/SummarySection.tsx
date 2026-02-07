@@ -201,6 +201,81 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
           </div>
         </div>
 
+        {/* Type Distribution */}
+        {stats.typeDistribution && (
+          <div style={{ marginBottom: "2rem" }}>
+            <h4
+              style={{
+                margin: "0 0 1rem 0",
+                color: "var(--text-secondary)",
+                fontSize: "0.9rem",
+              }}
+            >
+              Commit Types
+              <span
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: "normal",
+                  marginLeft: "0.5rem",
+                  opacity: 0.7,
+                }}
+              >
+                (Based on Conventional Commits)
+              </span>
+            </h4>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {Object.entries(stats.typeDistribution).map(([type, count]) => {
+                const total = Object.values(
+                  stats.typeDistribution || {}
+                ).reduce((a, b) => a + b, 0);
+                const percent = (count / total) * 100;
+                return (
+                  <div
+                    key={type}
+                    style={{
+                      flex: "1 1 auto",
+                      minWidth: "80px",
+                      background: "var(--bg-page)",
+                      padding: "0.75rem",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border-subtle)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "0.8rem",
+                        fontWeight: 700,
+                        marginBottom: "0.25rem",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {type}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "1.1rem",
+                        color: "var(--accent-primary)",
+                      }}
+                    >
+                      {count}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.7rem",
+                        color: "var(--text-tertiary)",
+                        marginTop: "0.2rem",
+                      }}
+                    >
+                      {Math.round(percent)}%
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Time Distribution */}
         {timeDistribution && (
           <div>

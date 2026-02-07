@@ -5,6 +5,14 @@ export interface Achievement {
   icon: string;
 }
 
+export interface Checklist {
+  hasType: boolean;
+  subjectLength: boolean;
+  imperativeVerb: boolean;
+  noVagueWords: boolean;
+  noPeriod: boolean;
+}
+
 export interface AnalysisResult {
   score: number;
   feedback: string[];
@@ -12,6 +20,7 @@ export interface AnalysisResult {
   conventionalType?: string;
   achievements?: Achievement[];
   suggestion?: string;
+  checklist?: Checklist;
 }
 
 export interface Commit {
@@ -40,7 +49,11 @@ export interface RepoStats {
     evening: number; // 18-24
     night: number; // 0-6
   };
+  typeDistribution?: Record<string, number>;
+  consistencyScore?: number;
   achievements?: Achievement[];
+  tags?: string[];
+  scoreHistory?: { date: string; score: number }[];
 }
 
 export interface GithubCommitResponse {

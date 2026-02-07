@@ -173,6 +173,77 @@ export const analyzeCommit = (message: string): AnalysisResult => {
     status,
     conventionalType,
     achievements,
-    suggestion: suggestion || undefined
+    suggestion: suggestion || undefined,
+    checklist: {
+      hasType: !!conventionalType,
+      subjectLength: firstLine.length >= 10,
+      imperativeVerb: !!(subject && IMPERATIVE_VERBS.includes(firstWord)),
+      noVagueWords: !foundVagueWord,
+      noPeriod: !firstLine.endsWith('.')
+    }
+  };
+};
+
+/**
+ * Calculates aggregated statistics for a repository
+ */
+export const calculateRepoStats = (
+  commits: import('../types').Commit[],
+  repoName: string,
+  totalCount: number
+): import('../types').RepoStats => {
+  // Cap analysis to first 50 commits to match original logic
+  const analyzedCommits = commits.slice(0, 50);
+
+  const goodCommits = analyzedCommits.filter(c => c.analysis?.status === 'good').length;
+  const warningCommits = analyzedCommits.filter(c => c.analysis?.status === 'warning').length;
+  const badCommits = analyzedCommits.filter(c => c.analysis?.status === 'bad').length;
+
+  // Calculate score
+  const averageScore = analyzedCommits.length > 0 
+    ? analyzedCommits.reduce((acc, curr) => acc + (curr.analysis?.score || 0), 0) / analyzedCommits.length
+    : 0;
+
+  // Aggregate Achievements
+  const allAchievements = analyzedCommits.flatMap(c => c.analysis?.achievements || []);
+
+  // Time Distribution & Consistency
+  const timeDistribution = { morning: 0, afternoon: 0, evening: 0, night: 0 };
+  const typeDistribution: Record<string, number> = {};
+  
+  // Consistency: Standard Deviation of scores (inverse)
+  // Higher SD = Lower Consistency. We can map 0 SD -> 100, High SD -> 0.
+  const scores = analyzedCommits.map(c => c.analysis?.score || 0);
+  const variance = scores.reduce((sum, score) => sum + Math.pow(score - averageScore, 2), 0) / (scores.length || 1);
+  const consistencyScore = Math.max(0, 100 - (Math.sqrt(variance) * 20)); // Arbitrary scaling
+
+  analyzedCommits.forEach(c => {
+    // Time
+    const hour = new Date(c.author.date).getHours();
+    if (hour >= 6 && hour < 12) timeDistribution.morning++;
+    else if (hour >= 12 && hour < 18) timeDistribution.afternoon++;
+    else if (hour >= 18 && hour < 24) timeDistribution.evening++;
+    else timeDistribution.night++;
+
+    // Type
+    if (c.analysis?.conventionalType) {
+      typeDistribution[c.analysis.conventionalType] = (typeDistribution[c.analysis.conventionalType] || 0) + 1;
+    } else {
+      typeDistribution['unknown'] = (typeDistribution['unknown'] || 0) + 1;
+    }
+  });
+
+  return {
+    repoName,
+    averageScore,
+    totalCommits: totalCount,
+    goodCommits,
+    warningCommits,
+    badCommits,
+    lastAnalyzed: new Date().toISOString(),
+    timeDistribution,
+    typeDistribution,
+    consistencyScore,
+    achievements: allAchievements,
   };
 };

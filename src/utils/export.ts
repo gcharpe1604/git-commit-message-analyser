@@ -81,3 +81,29 @@ export function downloadFile(content: string, filename: string, mimeType: string
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Export history items to CSV
+ * @param history - Array of RepoStats
+ */
+export function exportHistoryToCSV(history: RepoStats[]): string {
+  const headers = ['Repository', 'Score', 'Total Commits', 'Status', 'Date', 'Tags'];
+  const rows = history.map(item => [
+    item.repoName,
+    item.averageScore.toFixed(2),
+    item.totalCommits,
+    item.averageScore >= 8 ? 'Good' : item.averageScore >= 5 ? 'Warning' : 'Bad',
+    new Date(item.lastAnalyzed).toLocaleDateString(),
+    item.tags?.join(';') || ''
+  ]);
+  
+  return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+}
+
+/**
+ * Export history items to JSON
+ * @param history - Array of RepoStats
+ */
+export function exportHistoryToJSON(history: RepoStats[]): string {
+  return JSON.stringify(history, null, 2);
+}

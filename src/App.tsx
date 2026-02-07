@@ -14,11 +14,11 @@ import { ExportButton } from "./components/ExportButton";
 import { UserRepoList } from "./components/UserRepoList";
 import { fetchCommits, fetchUserRepos } from "./services/githubService";
 import { saveAnalysis } from "./services/storageService";
+import { calculateRepoStats } from "./utils/simpleAnalyzer";
 import type { Commit, RepoStats, Repository } from "./types";
 import { Toast } from "./components/Toast";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { CONSTANTS } from "./constants";
-import { getTimePeriod } from "./utils/time";
 
 function App() {
   const [commits, setCommits] = useState<Commit[]>([]);
@@ -42,63 +42,6 @@ function App() {
     CONSTANTS.STORAGE.RECENT_SEARCHES_KEY,
     []
   );
-
-  const calculateStats = (
-    commits: Commit[],
-    repoName: string,
-    totalCount: number
-  ): RepoStats => {
-    // Cap analysis to first 50 commits
-    const analyzedCommits = commits.slice(0, 50);
-
-    const goodCommits = analyzedCommits.filter(
-      (c) => c.analysis?.status === "good"
-    ).length;
-    const warningCommits = analyzedCommits.filter(
-      (c) => c.analysis?.status === "warning"
-    ).length;
-    const badCommits = analyzedCommits.filter(
-      (c) => c.analysis?.status === "bad"
-    ).length;
-
-    // Calculate score based on the analyzed commits (sample)
-    const averageScore =
-      analyzedCommits.reduce(
-        (acc, curr) => acc + (curr.analysis?.score || 0),
-        0
-      ) / analyzedCommits.length;
-
-    // Aggregate Achievements
-    const allAchievements = analyzedCommits.flatMap(
-      (c) => c.analysis?.achievements || []
-    );
-
-    // Time Distribution
-    const timeDistribution = {
-      morning: 0,
-      afternoon: 0,
-      evening: 0,
-      night: 0,
-    };
-
-    analyzedCommits.forEach((c) => {
-      const hour = new Date(c.author.date).getHours();
-      const period = getTimePeriod(hour);
-      timeDistribution[period]++;
-    });
-
-    return {
-      repoName,
-      averageScore,
-      totalCommits: totalCount, // Use the real total count
-      goodCommits,
-      warningCommits,
-      badCommits,
-      lastAnalyzed: new Date().toISOString(),
-      timeDistribution,
-      achievements: allAchievements,
-    };
-  };
 
   const addToRecentSearches = (input: string) => {
     setRecentSearches((prev) => {
@@ -133,7 +76,7 @@ function App() {
       setHasMore(fetchedCommits.length < totalCount);
 
       const repoName = url.split("github.com/")[1] || url;
-      const newStats = calculateStats(fetchedCommits, repoName, totalCount);
+      const newStats = calculateRepoStats(fetchedCommits, repoName, totalCount);
       setStats(newStats);
       saveAnalysis(newStats);
       setViewMode("analysis");
@@ -217,7 +160,7 @@ function App() {
       setHasMore(updatedCommits.length < totalCount);
 
       // Recalculate stats with ALL commits
-      const newStats = calculateStats(
+      const newStats = calculateRepoStats(
         updatedCommits,
         stats.repoName,
         totalCount
