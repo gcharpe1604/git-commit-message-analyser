@@ -62,8 +62,8 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
     <>
       <div className="panel no-lift animate-in" style={{ padding: "2rem", marginBottom: "2rem" }}>
 
-        {/* ── Header: Repo Name + Copy Button ── */}
-        <div style={{ marginBottom: "2rem", textAlign: "center", position: "relative" }}>
+        {/* ── Header: Repo Name ── */}
+        <div style={{ marginBottom: "2rem", textAlign: "center" }}>
           <a
             href={`https://github.com/${stats.repoName}`}
             target="_blank"
@@ -91,29 +91,29 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             Analysis Report
           </div>
 
-          {/* Copy Summary Button */}
-          <button
-            onClick={handleCopySummary}
-            style={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "0.4rem",
-              padding: "0.4rem 0.85rem",
-              fontSize: "0.8rem",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-subtle)",
-              background: copied ? "var(--status-good)" : "var(--bg-page)",
-              color: copied ? "#fff" : "var(--text-secondary)",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-              fontWeight: 500,
-            }}
-          >
-            {copied ? "✓ Copied!" : "📋 Copy Summary"}
-          </button>
+          {/* Copy Summary Button — centered below subtitle */}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
+            <button
+              onClick={handleCopySummary}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                padding: "0.45rem 1rem",
+                fontSize: "0.8rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-active)",
+                background: "var(--bg-panel-hover)",
+                color: copied ? "var(--status-good)" : "var(--text-secondary)",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                fontWeight: 500,
+                fontFamily: "inherit",
+              }}
+            >
+              {copied ? "✓ Copied!" : "📋 Copy Summary"}
+            </button>
+          </div>
         </div>
 
         {/* ── Developer Type Badge ── */}
