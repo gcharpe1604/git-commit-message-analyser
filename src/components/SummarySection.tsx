@@ -6,11 +6,11 @@ interface SummarySectionProps {
   stats: RepoStats;
 }
 
-const DEVELOPER_TYPE_CONFIG: Record<string, { emoji: string; color: string; description: string }> = {
-  'Night Owl Coder':    { emoji: '🦉', color: '#7c3aed', description: 'Most commits happen late at night' },
-  'Consistent Builder': { emoji: '🏗️', color: '#059669', description: 'Steady, regular commit patterns' },
-  'Burst Committer':    { emoji: '⚡', color: '#d97706', description: 'Commits in high-intensity bursts' },
-  'Weekend Hacker':     { emoji: '🛠️', color: '#2563eb', description: 'Prefers hacking on weekends' },
+const DEVELOPER_TYPE_CONFIG: Record<string, { emoji: string; varName: string; description: string }> = {
+  'Night Owl Coder':    { emoji: '🦉', varName: '--accent-primary',  description: 'Most commits happen late at night' },
+  'Consistent Builder': { emoji: '🏗️', varName: '--status-good',     description: 'Steady, regular commit patterns' },
+  'Burst Committer':    { emoji: '⚡', varName: '--status-warning',  description: 'Commits in high-intensity bursts' },
+  'Weekend Hacker':     { emoji: '🛠️', varName: '--accent-text',     description: 'Prefers hacking on weekends' },
 };
 
 const getQualityLabel = (score: number) => {
@@ -46,6 +46,9 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
   };
 
   const devTypeConfig = developerType ? DEVELOPER_TYPE_CONFIG[developerType] : null;
+  const devColor = devTypeConfig ? `var(${devTypeConfig.varName})` : 'var(--accent-primary)';
+  const devColorAlpha = devTypeConfig ? `color-mix(in srgb, var(${devTypeConfig.varName}) 12%, transparent)` : 'transparent';
+  const devBorderAlpha = devTypeConfig ? `color-mix(in srgb, var(${devTypeConfig.varName}) 30%, transparent)` : 'var(--border-subtle)';
 
   const handleCopySummary = () => {
     const summary = `Repo: ${stats.repoName} | Avg Score: ${averageScore.toFixed(1)}/10 | ${developerType || 'Unknown'} | ${getQualityLabel(averageScore)}`;
@@ -100,7 +103,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
               gap: "0.4rem",
               padding: "0.4rem 0.85rem",
               fontSize: "0.8rem",
-              borderRadius: "8px",
+              borderRadius: "var(--radius-sm)",
               border: "1px solid var(--border-subtle)",
               background: copied ? "var(--status-good)" : "var(--bg-page)",
               color: copied ? "#fff" : "var(--text-secondary)",
@@ -122,9 +125,9 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
               justifyContent: "center",
               gap: "1rem",
               padding: "1rem 1.5rem",
-              borderRadius: "12px",
-              background: `${devTypeConfig.color}18`,
-              border: `1px solid ${devTypeConfig.color}40`,
+              borderRadius: "var(--radius-md)",
+              background: devColorAlpha,
+              border: `1px solid ${devBorderAlpha}`,
               marginBottom: "2rem",
             }}
           >
@@ -133,7 +136,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
               <div style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>
                 Developer Type
               </div>
-              <div style={{ fontSize: "1.25rem", fontWeight: 700, color: devTypeConfig.color }}>
+              <div style={{ fontSize: "1.25rem", fontWeight: 700, color: devColor }}>
                 {developerType}
               </div>
               <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.15rem" }}>
@@ -161,8 +164,8 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             style={{
               padding: "1.25rem 1rem",
               background: "var(--bg-page)",
-              borderRadius: "12px",
-              border: `1px solid ${getScoreColor(averageScore)}40`,
+              borderRadius: "var(--radius-md)",
+              border: `1px solid color-mix(in srgb, ${getScoreColor(averageScore)} 30%, transparent)`,
             }}
           >
             <div
@@ -188,7 +191,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             style={{
               padding: "1.25rem 1rem",
               background: "var(--bg-page)",
-              borderRadius: "12px",
+              borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-subtle)",
             }}
           >
@@ -261,7 +264,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
                       minWidth: "80px",
                       background: "var(--bg-page)",
                       padding: "0.75rem",
-                      borderRadius: "8px",
+                      borderRadius: "var(--radius-sm)",
                       border: "1px solid var(--border-subtle)",
                       textAlign: "center",
                       transition: "transform 0.2s, box-shadow 0.2s",
