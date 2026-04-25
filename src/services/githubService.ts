@@ -103,7 +103,7 @@ export const fetchCommits = async (repoUrl: string, page: number = 1): Promise<{
              // Fallback to estimation if last page fetch fails
              totalCount = lastPage * CONSTANTS.API.COMMITS_PER_PAGE;
           }
-        } catch (e) {
+        } catch {
            // Fallback to estimation
            totalCount = lastPage * CONSTANTS.API.COMMITS_PER_PAGE;
         }
@@ -143,7 +143,7 @@ export const fetchCommits = async (repoUrl: string, page: number = 1): Promise<{
 
 
 export const fetchUserRepos = async (username: string): Promise<import('../types').Repository[]> => {
-  const apiUrl = `${GITHUB_API_URL}/users/${username}/repos?sort=updated&per_page=${CONSTANTS.API.REPOS_PER_PAGE}&type=public`;
+  const apiUrl = `${GITHUB_API_URL}/users/${username}/repos?sort=updated&per_page=${CONSTANTS.API.REPOS_PER_PAGE}&type=owner`;
 
   const response = await fetch(apiUrl, { headers: getHeaders() });
 
@@ -152,6 +152,8 @@ export const fetchUserRepos = async (username: string): Promise<import('../types
       throw new Error("User not found.");
     } else if (response.status === 403) {
       throw new Error("API rate limit exceeded. Try again later.");
+    } else if (response.status === 401) {
+      throw new Error("Invalid GitHub Token. Please check your token settings.");
     }
     throw new Error("Failed to fetch repositories.");
   }
@@ -159,6 +161,7 @@ export const fetchUserRepos = async (username: string): Promise<import('../types
   return await response.json();
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const fetchCommitDetails = async (url: string): Promise<any> => {
   const response = await fetch(url, { headers: getHeaders() });
   

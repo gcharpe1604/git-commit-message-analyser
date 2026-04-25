@@ -174,10 +174,11 @@ export const analyzeCommit = (message: string): AnalysisResult => {
   // ----------------------------------------------------------------------
   // 3. IMPERATIVE MOOD (Command Style)
   // ----------------------------------------------------------------------
-  let subjectPart = conventionalType ? firstLine.split(':')[1]?.trim() || '' : firstLine;
+  const subjectPart = conventionalType ? firstLine.split(':')[1]?.trim() || '' : firstLine;
   const firstWord = subjectPart.split(' ')[0];
   const lowerFirstWord = firstWord.toLowerCase();
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isImperative = IMPERATIVE_VERBS.includes(lowerFirstWord as any);
   const mappedVerb = VERB_MAP[lowerFirstWord];
 

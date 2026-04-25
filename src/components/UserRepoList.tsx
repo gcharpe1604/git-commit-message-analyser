@@ -1,27 +1,47 @@
 import type { Repository } from "../types";
+import { Skeleton, Empty } from "antd";
 
 interface UserRepoListProps {
   repos: Repository[];
   onSelectRepo: (repoUrl: string) => void;
   username?: string | null;
+  isLoading?: boolean;
 }
 
 export const UserRepoList = ({
   repos,
   onSelectRepo,
   username,
+  isLoading,
 }: UserRepoListProps) => {
+  if (isLoading) {
+    return (
+      <div className="animate-in" style={{ padding: "2rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="panel" style={{ padding: "1.5rem" }}>
+            <Skeleton active paragraph={{ rows: 2 }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (repos.length === 0) {
     return (
       <div
         className="panel animate-in"
         style={{
-          padding: "2rem",
-          textAlign: "center",
-          color: "var(--text-secondary)",
+          padding: "4rem 2rem",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center"
         }}
       >
-        No repositories found for this user.
+        <Empty description={<span style={{ color: "var(--text-secondary)" }}>No repositories found</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        <div style={{ color: "var(--text-secondary)", marginTop: "0.5rem" }}>
+          Check the username or try another
+        </div>
       </div>
     );
   }

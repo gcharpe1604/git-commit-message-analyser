@@ -1,14 +1,136 @@
 import { useState, memo } from "react";
+import { message } from "antd";
 import type { Commit } from "../types";
 import { TYPE_COLORS, STATUS_COLORS, CONSTANTS } from "../constants";
 import { getRelativeTime } from "../utils/time";
 import { CopyButton } from "./CopyButton";
 import { DeepAnalysisSection } from "./DeepAnalysisSection";
+import { useLLM } from "../hooks/useLLM";
+import { MdAutoAwesome, MdContentCopy } from "react-icons/md";
 
 interface CommitCardProps {
   commit: Commit;
   index: number;
 }
+
+const AIImprovementSection = ({ message: commitMessage }: { message: string }) => {
+  const { improveMessage, loading, error, hasApiKey } = useLLM();
+  const [improved, setImproved] = useState<string | null>(null);
+
+  const handleImprove = async () => {
+    if (!hasApiKey) {
+      message.warning("Please add your API Key in Settings first.");
+      return;
+    }
+    const result = await improveMessage(commitMessage);
+    if (result) setImproved(result);
+  };
+
+  const copyToClipboard = () => {
+    if (improved) {
+      navigator.clipboard.writeText(improved);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+      {error && (
+        <div
+          style={{
+            color: "var(--status-bad)",
+            fontSize: "0.85rem",
+            marginBottom: "0.5rem",
+            background: "rgba(239, 68, 68, 0.1)",
+            padding: "0.5rem",
+            borderRadius: "6px",
+          }}
+        >
+          ⚠️ {error}
+        </div>
+      )}
+
+      {!improved ? (
+        <button
+          onClick={handleImprove}
+          disabled={loading}
+          className="btn-ghost"
+          style={{
+            fontSize: "0.85rem",
+            color: "var(--accent-primary)",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.25rem 0.5rem",
+            border: "1px solid var(--accent-primary)",
+            background: "rgba(109, 40, 217, 0.05)",
+            cursor: loading ? "wait" : "pointer",
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? <MdAutoAwesome className="spin" /> : <MdAutoAwesome />}
+          {loading ? "Analyzing..." : "Improve with AI"}
+        </button>
+      ) : (
+        <div
+          style={{
+            background: "rgba(109, 40, 217, 0.05)",
+            border: "1px solid rgba(109, 40, 217, 0.2)",
+            borderRadius: "6px",
+            padding: "0.75rem",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: "var(--accent-primary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.25rem",
+              }}
+            >
+              <MdAutoAwesome /> AI Suggestion
+            </span>
+            <button
+              onClick={copyToClipboard}
+              title="Copy to clipboard"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--text-secondary)",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <MdContentCopy />
+            </button>
+          </div>
+          <div
+            style={{
+              fontFamily: "monospace",
+              fontSize: "0.9rem",
+              whiteSpace: "pre-wrap",
+              color: "var(--text-primary)",
+            }}
+          >
+            {improved}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const CommitCard = memo(
   ({ commit, index }: CommitCardProps) => {
@@ -217,9 +339,11 @@ export const CommitCard = memo(
               >
                 <DeepAnalysisSection commit={commit} />
 
+                <AIImprovementSection message={message} />
+
                 <ul
                   style={{
-                    margin: 0,
+                    margin: "1rem 0 0 0",
                     paddingLeft: "1.2rem",
                     color: "var(--text-secondary)",
                   }}
@@ -240,5 +364,5 @@ export const CommitCard = memo(
   (prevProps, nextProps) => {
     // Only re-render if commit SHA changes
     return prevProps.commit.sha === nextProps.commit.sha;
-  }
+  },
 );

@@ -30,7 +30,7 @@ export const DeepAnalysisSection = ({ commit }: { commit: Commit }) => {
       setDeepSuggestion(
         suggestion || "Could not generate a better message from changes."
       );
-    } catch (err) {
+    } catch {
       setError("Failed to fetch commit details. Rate limit might be exceeded.");
     } finally {
       setLoading(false);

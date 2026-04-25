@@ -2,11 +2,12 @@ import { useState } from "react";
 import { sanitizeInput } from "../utils/sanitize";
 
 interface InputSectionProps {
-  onAnalyze: (input: string) => void;
+  onAnalyze: (input: string, mode: "user" | "repo") => void;
   isLoading: boolean;
   recentSearches?: string[];
   onRemoveRecent?: (input: string) => void;
   onClearHistory?: () => void;
+  inputRef?: React.Ref<HTMLInputElement>;
 }
 
 export const InputSection = ({
@@ -15,20 +16,30 @@ export const InputSection = ({
   recentSearches = [],
   onRemoveRecent,
   onClearHistory,
+  inputRef,
 }: InputSectionProps) => {
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState<"user" | "repo">("user");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAnalyze(sanitizeInput(input));
+    const sanitized = sanitizeInput(input);
+
+    if (mode === "repo") {
+      // In repo mode: accept owner/repo shorthand or full URL
+      const repoUrl = sanitized.startsWith("http")
+        ? sanitized
+        : `https://github.com/${sanitized}`;
+      onAnalyze(repoUrl, "repo");
+    } else {
+      // In user mode: pass username directly
+      onAnalyze(sanitized, "user");
+    }
   };
 
-  const isUrl = input.includes("/") || input.includes("github.com");
-  const buttonText = isLoading
-    ? "Analyzing..."
-    : isUrl
-    ? "Analyze Repository"
-    : "Search User";
+  const placeholder = mode === "user"
+    ? "Enter GitHub username (e.g. torvalds)"
+    : "Enter owner/repo or URL (e.g. torvalds/linux)";
 
   return (
     <div className="animate-in" style={{ marginBottom: "3rem" }}>
@@ -36,11 +47,51 @@ export const InputSection = ({
         onSubmit={handleSubmit}
         style={{
           display: "flex",
-          gap: "0.75rem",
+          flexDirection: "column",
+          gap: "1rem",
           maxWidth: "600px",
           margin: "0 auto",
         }}
       >
+        <div style={{ alignSelf: "center", display: "flex", background: "var(--bg-panel)", borderRadius: "8px", padding: "0.25rem", border: "1px solid var(--border-subtle)" }}>
+          <button
+            type="button"
+            onClick={() => setMode("user")}
+            style={{
+              background: mode === "user" ? "var(--bg-page)" : "transparent",
+              color: mode === "user" ? "var(--text-primary)" : "var(--text-secondary)",
+              border: "none",
+              borderRadius: "6px",
+              padding: "0.25rem 1rem",
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              boxShadow: mode === "user" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+              transition: "all 0.2s"
+            }}
+          >
+            User
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("repo")}
+            style={{
+              background: mode === "repo" ? "var(--bg-page)" : "transparent",
+              color: mode === "repo" ? "var(--text-primary)" : "var(--text-secondary)",
+              border: "none",
+              borderRadius: "6px",
+              padding: "0.25rem 1rem",
+              cursor: "pointer",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              boxShadow: mode === "repo" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+              transition: "all 0.2s"
+            }}
+          >
+            Repository
+          </button>
+        </div>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
         <div className="input-group" style={{ flex: 1 }}>
           <div
             style={{
@@ -65,8 +116,9 @@ export const InputSection = ({
             </svg>
           </div>
           <input
+            ref={inputRef}
             type="text"
-            placeholder="github_username or owner/repo"
+            placeholder={placeholder}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
@@ -79,81 +131,71 @@ export const InputSection = ({
           disabled={isLoading}
           style={{ whiteSpace: "nowrap" }}
         >
-          {buttonText}
+          {isLoading ? "Analyzing..." : "Analyze"}
         </button>
+        </div>
       </form>
 
       {recentSearches.length > 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "1rem",
-            display: "flex",
-            justifyContent: "center",
-            gap: "0.2rem",
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div style={{ marginTop: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
             <span
-              style={{
-                fontSize: "0.85rem",
-                color: "var(--text-tertiary)",
-                display: "flex",
-                alignItems: "center",
-              }}
+              style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}
             >
-              Recent:
+              Recent Searches:
             </span>
-            {onClearHistory && (
+            {recentSearches.map((search, idx) => {
+              const searchMode = search.includes("/") ? "repo" : "user";
+              return (
+                <div key={idx} className="recent-search-item">
+                  <button
+                    onClick={() => onAnalyze(search, searchMode)}
+                    className="recent-search-btn"
+                  >
+                    {search}
+                  </button>
+                  {onRemoveRecent && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveRecent(search);
+                      }}
+                      className="recent-search-remove"
+                      aria-label={`Remove ${search} from recent searches`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {onClearHistory && recentSearches.length > 0 && (
               <button
                 onClick={onClearHistory}
                 style={{
-                  background: "transparent",
+                  background: "none",
                   border: "none",
-                  color: "var(--text-tertiary)",
+                  color: "var(--status-bad)",
                   fontSize: "0.75rem",
                   cursor: "pointer",
-                  padding: "0.1rem 0.3rem",
-                  textDecoration: "underline",
-                  opacity: 0.7,
+                  marginLeft: "auto",
+                  opacity: 0.8,
+                  fontWeight: 600,
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "var(--status-bad)";
-                  e.currentTarget.style.opacity = "1";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "var(--text-tertiary)";
-                  e.currentTarget.style.opacity = "0.7";
-                }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.8")}
               >
                 Clear All
               </button>
             )}
           </div>
-          {recentSearches.map((search, idx) => (
-            <div key={idx} className="recent-search-item">
-              <button
-                onClick={() => onAnalyze(search)}
-                className="recent-search-btn"
-              >
-                {search}
-              </button>
-              {onRemoveRecent && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveRecent(search);
-                  }}
-                  className="recent-search-remove"
-                  aria-label={`Remove ${search} from recent searches`}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
         </div>
       )}
 

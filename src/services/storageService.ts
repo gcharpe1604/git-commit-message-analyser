@@ -7,7 +7,7 @@ export const saveAnalysis = (stats: RepoStats) => {
     const history = getHistory();
     const existingIndex = history.findIndex(item => item.repoName === stats.repoName);
     
-    let newStats = { ...stats };
+    const newStats = { ...stats };
     
     if (existingIndex >= 0) {
       const existing = history[existingIndex];

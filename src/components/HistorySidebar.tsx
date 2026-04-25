@@ -1,12 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
+import { Empty } from "antd";
 import {
   MdSearch,
   MdDelete,
   MdFileDownload,
-  MdCheckBox,
-  MdCheckBoxOutlineBlank,
-  MdLabel,
   MdClose,
+  MdCloud,
+  MdLabel,
 } from "react-icons/md";
 import { getHistory, saveAnalysis } from "../services/storageService";
 import {
@@ -16,6 +16,8 @@ import {
 } from "../utils/export";
 import type { RepoStats } from "../types";
 import { TagModal } from "./TagModal";
+import { useAuth } from "../hooks/useAuth";
+import { fetchUserAnalyses } from "../services/analysisService";
 
 interface HistorySidebarProps {
   isOpen: boolean;
@@ -35,6 +37,7 @@ export const HistorySidebar = ({
   onClose,
   onSelectRepo,
 }: HistorySidebarProps) => {
+  const { user } = useAuth();
   const [history, setHistory] = useState<RepoStats[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date-desc");
@@ -44,14 +47,58 @@ export const HistorySidebar = ({
   >("all");
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isCloudSynced, setIsCloudSynced] = useState(false);
   const [tagModalRepo, setTagModalRepo] = useState<string | null>(null);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
-  useEffect(() => {
-    if (isOpen) {
-      setHistory(getHistory());
+  // Reset selected IDs when the sidebar closes (derived state pattern)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (!isOpen && selectedIds.length > 0) {
       setSelectedIds([]);
     }
-  }, [isOpen, refreshTrigger]);
+  }
+
+  useEffect(() => {
+    const localHistory = getHistory();
+
+    if (user) {
+      // Logged in: merge cloud data with local
+      fetchUserAnalyses(user.id).then((cloudData) => {
+        setIsCloudSynced(true);
+        if (cloudData.length === 0) {
+          setHistory(localHistory);
+          return;
+        }
+        // Build a map from cloud data, then overlay local data on top
+        const cloudMap = new Map<string, RepoStats>();
+        cloudData.forEach((r) => {
+          cloudMap.set(r.repo_name, {
+            repoName: r.repo_name,
+            averageScore: r.avg_score,
+            totalCommits: r.total_commits,
+            goodCommits: 0,
+            warningCommits: 0,
+            badCommits: 0,
+            lastAnalyzed: r.created_at || new Date().toISOString(),
+          });
+        });
+        // Local data is richer (has breakdowns) — prefer it when available
+        localHistory.forEach((local) => {
+          cloudMap.set(local.repoName, local);
+        });
+        setHistory(Array.from(cloudMap.values()));
+      }).catch(() => {
+        setHistory(localHistory);
+      });
+    } else {
+      // Guest: use localStorage only
+      setTimeout(() => {
+        setIsCloudSynced(false);
+        setHistory(localHistory);
+      }, 0);
+    }
+  }, [isOpen, refreshTrigger, user]);
 
   const filteredHistory = useMemo(() => {
     return history
@@ -94,7 +141,6 @@ export const HistorySidebar = ({
       });
   }, [history, search, sort, filterScore, filterTag]);
 
-  // Derive all unique tags
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     history.forEach((item) => {
@@ -102,14 +148,6 @@ export const HistorySidebar = ({
     });
     return Array.from(tags).sort();
   }, [history]);
-
-  const toggleSelect = (repoName: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(repoName)
-        ? prev.filter((id) => id !== repoName)
-        : [...prev, repoName]
-    );
-  };
 
   const handleBulkDelete = () => {
     if (confirm(`Delete ${selectedIds.length} items?`)) {
@@ -211,47 +249,44 @@ export const HistorySidebar = ({
             borderBottom: "1px solid var(--border-subtle)",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "1rem",
-            }}
-          >
-            <h2 style={{ margin: 0, fontSize: "1.25rem" }}>
-              History & Analytics
-            </h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <h2 style={{ margin: 0, fontSize: "1.25rem" }}>History</h2>
+              {isCloudSynced && (
+                <span style={{
+                  display: "flex", alignItems: "center", gap: "0.25rem",
+                  fontSize: "0.7rem", color: "#22c55e", fontWeight: 500,
+                  padding: "0.1rem 0.4rem", borderRadius: "10px",
+                  border: "1px solid rgba(34,197,94,0.3)",
+                  background: "rgba(34,197,94,0.06)",
+                }}>
+                  <MdCloud size={11} /> Synced
+                </span>
+              )}
+            </div>
             <button
               onClick={onClose}
               style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontSize: "1.5rem",
-                color: "var(--text-secondary)",
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: "1.5rem", color: "var(--text-secondary)",
               }}
             >
               ×
             </button>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", alignItems: "center" }}>
             <div
               className="input-field"
               style={{
                 display: "flex",
                 alignItems: "center",
                 flex: 1,
-                padding: "0.5rem",
+                padding: "0.4rem 0.6rem",
+                gap: "0.4rem",
               }}
             >
-              <MdSearch
-                style={{
-                  marginRight: "0.5rem",
-                  color: "var(--text-secondary)",
-                }}
-              />
+              <MdSearch style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
               <input
                 type="text"
                 placeholder="Search repos..."
@@ -263,14 +298,25 @@ export const HistorySidebar = ({
                   width: "100%",
                   outline: "none",
                   color: "var(--text-primary)",
+                  fontSize: "0.875rem",
                 }}
               />
             </div>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortOption)}
-              className="input-field"
-              style={{ padding: "0.5rem", minWidth: "120px" }}
+              style={{
+                padding: "0.4rem 0.5rem",
+                border: "1.5px solid var(--border-subtle)",
+                borderRadius: "var(--radius-sm)",
+                background: "var(--bg-page)",
+                color: "var(--text-primary)",
+                fontSize: "0.8rem",
+                outline: "none",
+                cursor: "pointer",
+                width: "100px",
+                flexShrink: 0,
+              }}
             >
               <option value="date-desc">Newest</option>
               <option value="date-asc">Oldest</option>
@@ -278,6 +324,7 @@ export const HistorySidebar = ({
               <option value="score-asc">Low Score</option>
             </select>
           </div>
+
 
           <div
             style={{
@@ -375,12 +422,24 @@ export const HistorySidebar = ({
           {filteredHistory.length === 0 ? (
             <div
               style={{
-                textAlign: "center",
-                padding: "2rem",
-                color: "var(--text-secondary)",
+                padding: "4rem 2rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              No items found.
+              <Empty
+                description={<span style={{ color: "var(--text-secondary)" }}>No analysis history yet</span>}
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+              <button
+                className="btn-primary"
+                style={{ marginTop: "1rem" }}
+                onClick={onClose}
+              >
+                Analyze a repository to get started
+              </button>
             </div>
           ) : (
             <div
@@ -409,24 +468,6 @@ export const HistorySidebar = ({
                       alignItems: "flex-start",
                     }}
                   >
-                    <button
-                      onClick={() => toggleSelect(item.repoName)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        color: selectedIds.includes(item.repoName)
-                          ? "var(--accent-primary)"
-                          : "var(--text-secondary)",
-                      }}
-                    >
-                      {selectedIds.includes(item.repoName) ? (
-                        <MdCheckBox size={20} />
-                      ) : (
-                        <MdCheckBoxOutlineBlank size={20} />
-                      )}
-                    </button>
 
                     <div
                       style={{ flex: 1 }}
@@ -476,80 +517,9 @@ export const HistorySidebar = ({
                         <span>{item.totalCommits} commits</span>
                       </div>
 
-                      {/* Sparkline (Score History) */}
-                      {item.scoreHistory && item.scoreHistory.length > 1 && (
-                        <div
-                          style={{
-                            height: "20px",
-                            display: "flex",
-                            alignItems: "flex-end",
-                            gap: "2px",
-                            marginBottom: "0.5rem",
-                            opacity: 0.7,
-                          }}
-                        >
-                          {item.scoreHistory.map((h, i) => (
-                            <div
-                              key={i}
-                              style={{
-                                width: "4px",
-                                height: `${(h.score / 10) * 100}%`,
-                                background:
-                                  h.score >= 8
-                                    ? "var(--status-good)"
-                                    : "var(--text-secondary)",
-                                borderRadius: "1px",
-                              }}
-                              title={`${new Date(
-                                h.date
-                              ).toLocaleDateString()}: ${h.score}`}
-                            />
-                          ))}
-                        </div>
-                      )}
 
-                      {/* Tags */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: "0.25rem",
-                        }}
-                      >
-                        {item.tags?.map((tag) => (
-                          <span
-                            key={tag}
-                            style={{
-                              fontSize: "0.7rem",
-                              background: "var(--bg-page)",
-                              padding: "0.1rem 0.4rem",
-                              borderRadius: "10px",
-                              border: "1px solid var(--border-subtle)",
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setTagModalRepo(item.repoName);
-                          }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            color: "var(--accent-primary)",
-                            fontSize: "0.7rem",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.2rem",
-                            opacity: 0.8,
-                          }}
-                        >
-                          <MdLabel size={12} />+ Tag
-                        </button>
-                      </div>
+
+
                     </div>
                   </div>
                 </div>

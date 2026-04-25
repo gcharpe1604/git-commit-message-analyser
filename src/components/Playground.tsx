@@ -1,15 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
+import { Empty, Button } from "antd";
 import {
   MdCheckCircle,
   MdCancel,
   MdSave,
   MdArrowForward,
   MdHistory,
+  MdAutoAwesome,
+  MdDelete,
 } from "react-icons/md";
 import { analyzeCommit } from "../utils/simpleAnalyzer";
 import { debounce } from "../utils/debounce";
 import { CONSTANTS } from "../constants";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+import { useLLM } from "../hooks/useLLM";
 import type { AnalysisResult } from "../types";
 
 interface SavedDraft {
@@ -24,7 +28,7 @@ export const Playground = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [savedDrafts, setSavedDrafts] = useLocalStorage<SavedDraft[]>(
     "playground_drafts",
-    []
+    [],
   );
 
   // Debounce the analysis to avoid running on every keystroke
@@ -37,8 +41,17 @@ export const Playground = () => {
           setResult(null);
         }
       }, CONSTANTS.ANIMATION.DEBOUNCE_DELAY),
-    []
+    [],
   );
+
+  const {
+    improveMessage,
+    generateMessage,
+    loading: llmLoading,
+    hasApiKey,
+  } = useLLM();
+  const [mode, setMode] = useState<"write" | "diff">("write");
+  const [diffInput, setDiffInput] = useState("");
 
   useEffect(() => {
     debouncedAnalyze(message);
@@ -55,11 +68,33 @@ export const Playground = () => {
     };
 
     setSavedDrafts((prev) => [newDraft, ...prev].slice(0, 50));
+    setMessage("");
+  };
+
+  const handleDeleteDraft = (id: string) => {
+    setSavedDrafts((prev) => prev.filter((draft) => draft.id !== id));
   };
 
   const applySuggestion = () => {
     if (result?.suggestion) {
       setMessage(result.suggestion);
+    }
+  };
+
+  const handleImprove = async () => {
+    if (!message.trim()) return;
+    const improved = await improveMessage(message);
+    if (improved) {
+      setMessage(improved);
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!diffInput.trim()) return;
+    const generated = await generateMessage(diffInput);
+    if (generated) {
+      setMessage(generated);
+      setMode("write");
     }
   };
 
@@ -82,14 +117,74 @@ export const Playground = () => {
           </p>
         </div>
 
-        {savedDrafts.length > 0 && (
-          <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-            <MdHistory
-              style={{ verticalAlign: "middle", marginRight: "0.25rem" }}
-            />
-            {savedDrafts.length} saved drafts
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              background: "var(--bg-panel)",
+              padding: "0.25rem",
+              borderRadius: "8px",
+              border: "1px solid var(--border-subtle)",
+            }}
+          >
+            <button
+              onClick={() => setMode("write")}
+              style={{
+                background: mode === "write" ? "var(--bg-page)" : "transparent",
+                color:
+                  mode === "write"
+                    ? "var(--text-primary)"
+                    : "var(--text-secondary)",
+                border: "none",
+                padding: "0.25rem 0.75rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "0.85rem",
+                boxShadow:
+                  mode === "write" ? "0 1px 2px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              Write
+            </button>
+            <button
+              onClick={() => setMode("diff")}
+              style={{
+                background: mode === "diff" ? "var(--bg-page)" : "transparent",
+                color:
+                  mode === "diff"
+                    ? "var(--text-primary)"
+                    : "var(--text-secondary)",
+                border: "none",
+                padding: "0.25rem 0.75rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: "0.85rem",
+                boxShadow:
+                  mode === "diff" ? "0 1px 2px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              From Diff
+            </button>
           </div>
-        )}
+
+          {savedDrafts.length > 0 && (
+            <div
+              style={{
+                fontSize: "0.9rem",
+                color: "var(--text-secondary)",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <MdHistory
+                style={{ verticalAlign: "middle", marginRight: "0.25rem" }}
+              />
+              {savedDrafts.length} drafts
+            </div>
+          )}
+        </div>
       </div>
 
       <div
@@ -101,33 +196,108 @@ export const Playground = () => {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a commit message here..."
-            className="input-field"
-            style={{
-              width: "100%",
-              minHeight: "200px",
-              padding: "1rem",
-              borderRadius: "0.75rem",
-              resize: "vertical",
-              fontFamily: "monospace",
-              fontSize: "1rem",
-              lineHeight: 1.5,
-            }}
-          />
+          {mode === "write" ? (
+            <>
+              <div style={{ position: "relative" }}>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Type a commit message here..."
+                  className="input-field"
+                  style={{
+                    width: "100%",
+                    minHeight: "200px",
+                    padding: "1rem",
+                    borderRadius: "0.75rem",
+                    resize: "vertical",
+                    fontFamily: "monospace",
+                    fontSize: "1rem",
+                    lineHeight: 1.5,
+                  }}
+                />
+                {hasApiKey && (
+                  <Button
+                    onClick={handleImprove}
+                    loading={llmLoading}
+                    disabled={!message.trim()}
+                    style={{
+                      position: "absolute",
+                      bottom: "1rem",
+                      right: "1rem",
+                      background: "rgba(109, 40, 217, 0.1)",
+                      color: "var(--accent-primary)",
+                      borderColor: "rgba(109, 40, 217, 0.2)",
+                      backdropFilter: "blur(4px)",
+                      fontWeight: 600,
+                    }}
+                    icon={!llmLoading && <MdAutoAwesome />}
+                  >
+                    Improve with AI
+                  </Button>
+                )}
+              </div>
 
-          {result && (
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                onClick={handleSave}
-                className="btn-secondary"
-                disabled={!message.trim()}
-                style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}
+              {result && (
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={handleSave}
+                    className="btn-secondary"
+                    disabled={!message.trim()}
+                    style={{ fontSize: "0.9rem", padding: "0.5rem 1rem" }}
+                  >
+                    <MdSave /> Save to History
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            >
+              <textarea
+                value={diffInput}
+                onChange={(e) => setDiffInput(e.target.value)}
+                placeholder="Paste git diff here..."
+                className="input-field"
+                style={{
+                  width: "100%",
+                  minHeight: "200px",
+                  padding: "1rem",
+                  borderRadius: "0.75rem",
+                  resize: "vertical",
+                  fontFamily: "monospace",
+                  fontSize: "0.85rem",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre",
+                }}
+              />
+              <Button
+                type="primary"
+                onClick={handleGenerate}
+                loading={llmLoading}
+                disabled={!diffInput.trim() || !hasApiKey}
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  padding: "0.6rem",
+                  fontWeight: 600,
+                }}
+                icon={!llmLoading && <MdAutoAwesome />}
               >
-                <MdSave /> Save to History
-              </button>
+                Generate Message
+              </Button>
+              {!hasApiKey && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    fontSize: "0.85rem",
+                    color: "var(--status-warning)",
+                    marginTop: "-0.5rem",
+                  }}
+                >
+                  ⚠️ Please add API Key in settings first
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -177,8 +347,8 @@ export const Playground = () => {
                         result.score >= 8
                           ? "var(--status-good)"
                           : result.score >= 5
-                          ? "var(--status-warning)"
-                          : "var(--status-bad)",
+                            ? "var(--status-warning)"
+                            : "var(--status-bad)",
                     }}
                   >
                     {result.score}
@@ -201,15 +371,15 @@ export const Playground = () => {
                         result.score >= 8
                           ? "var(--status-good)"
                           : result.score >= 5
-                          ? "var(--status-warning)"
-                          : "var(--status-bad)",
+                            ? "var(--status-warning)"
+                            : "var(--status-bad)",
                     }}
                   >
                     {result.score >= 8
                       ? "Excellent"
                       : result.score >= 5
-                      ? "Needs Work"
-                      : "Poor"}
+                        ? "Needs Work"
+                        : "Poor"}
                   </span>
                 </div>
               </div>
@@ -419,20 +589,28 @@ export const Playground = () => {
           ) : (
             <div
               style={{
-                height: "200px",
+                height: "100%",
+                minHeight: "200px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "var(--text-secondary)",
                 border: "2px dashed var(--border-subtle)",
                 borderRadius: "0.75rem",
                 background: "rgba(0,0,0,0.02)",
-                gap: "1rem",
+                padding: "2rem",
               }}
             >
-              <div style={{ fontSize: "2rem", opacity: 0.3 }}>🧪</div>
-              <span>Start typing to analyze...</span>
+              <Empty
+                description={
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    {mode === "write"
+                      ? "Write a commit message to analyze"
+                      : "Paste a git diff to generate a commit message"}
+                  </span>
+                }
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
             </div>
           )}
         </div>
@@ -470,27 +648,46 @@ export const Playground = () => {
                     marginBottom: "0.5rem",
                   }}
                 >
-                  <span
+                  <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color:
+                          draft.score >= 8
+                            ? "var(--status-good)"
+                            : draft.score >= 5
+                              ? "var(--status-warning)"
+                              : "var(--status-bad)",
+                      }}
+                    >
+                      Score: {draft.score}
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--text-secondary)",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      {new Date(draft.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteDraft(draft.id)}
                     style={{
-                      fontWeight: 700,
-                      color:
-                        draft.score >= 8
-                          ? "var(--status-good)"
-                          : draft.score >= 5
-                          ? "var(--status-warning)"
-                          : "var(--status-bad)",
+                      background: "none",
+                      border: "none",
+                      color: "var(--status-bad)",
+                      cursor: "pointer",
+                      padding: "0.2rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "4px",
                     }}
+                    title="Delete Draft"
                   >
-                    Score: {draft.score}
-                  </span>
-                  <span
-                    style={{
-                      color: "var(--text-secondary)",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    {new Date(draft.date).toLocaleDateString()}
-                  </span>
+                    <MdDelete size={16} />
+                  </button>
                 </div>
                 <div
                   style={{
@@ -506,6 +703,8 @@ export const Playground = () => {
                 <button
                   onClick={() => {
                     setMessage(draft.message);
+                    setMode("write");
+                    handleDeleteDraft(draft.id);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                   className="btn-ghost"

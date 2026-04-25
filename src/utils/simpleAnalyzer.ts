@@ -83,6 +83,7 @@ export const analyzeCommit = (message: string): AnalysisResult => {
     const type = conventionalMatch[1];
     
     // Validate if the type is a standard one
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (CONVENTIONAL_TYPES.includes(type as any)) {
       conventionalType = type;
       achievements.push({
@@ -117,10 +118,11 @@ export const analyzeCommit = (message: string): AnalysisResult => {
 
   // 4. Imperative Mood Check (e.g., "Add" instead of "Added")
   // Extract the subject part (after the type)
-  let subject = conventionalType ? firstLine.split(':')[1]?.trim() || '' : firstLine;
+  const subject = conventionalType ? firstLine.split(':')[1]?.trim() || '' : firstLine;
   const firstWord = subject.split(' ')[0].toLowerCase();
   
   // Only check if we have a subject
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (subject && !IMPERATIVE_VERBS.includes(firstWord as any)) {
     score -= 1;
     feedback.push("Start subject with an imperative verb (e.g., 'add', 'fix', 'update').");
