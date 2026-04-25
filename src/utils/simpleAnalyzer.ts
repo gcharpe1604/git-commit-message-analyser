@@ -19,6 +19,50 @@ const VAGUE_WORDS = [
 ];
 
 // ----------------------------------------------------------------------
+// DEVELOPER TYPE LOGIC
+// ----------------------------------------------------------------------
+
+/**
+ * Determines a "Developer Type" from commit metadata.
+ * Simple, explainable heuristics — no ML needed.
+ */
+const getDeveloperType = (
+  timeDistribution: { morning: number; afternoon: number; evening: number; night: number },
+  commits: import('../types').Commit[]
+): string => {
+  const total = timeDistribution.morning + timeDistribution.afternoon + timeDistribution.evening + timeDistribution.night;
+  if (total === 0) return 'Consistent Builder';
+
+  // Rule 1: Weekend Hacker — majority of commits on Sat/Sun
+  const weekendCommits = commits.filter(c => {
+    const day = new Date(c.author.date).getDay();
+    return day === 0 || day === 6;
+  }).length;
+  if (commits.length > 0 && weekendCommits / commits.length > 0.5) return 'Weekend Hacker';
+
+  // Rule 2: Night Owl Coder — majority of commits in evening/night
+  const nightRatio = (timeDistribution.night + timeDistribution.evening) / total;
+  if (nightRatio > 0.55) return 'Night Owl Coder';
+
+  // Rule 3: Burst Committer — daily commit counts have high variance (spikes)
+  const commitsByDay: Record<string, number> = {};
+  commits.forEach(c => {
+    const day = new Date(c.author.date).toISOString().split('T')[0];
+    commitsByDay[day] = (commitsByDay[day] || 0) + 1;
+  });
+  const dayCounts = Object.values(commitsByDay);
+  if (dayCounts.length > 1) {
+    const avgPerDay = dayCounts.reduce((a, b) => a + b, 0) / dayCounts.length;
+    const maxPerDay = Math.max(...dayCounts);
+    // If the peak day has 3x or more commits than average, it's a burst pattern
+    if (maxPerDay > avgPerDay * 3) return 'Burst Committer';
+  }
+
+  // Default: Consistent Builder
+  return 'Consistent Builder';
+};
+
+// ----------------------------------------------------------------------
 // HELPER FUNCTIONS
 // ----------------------------------------------------------------------
 
@@ -29,7 +73,6 @@ const VAGUE_WORDS = [
 const inferType = (message: string): string => {
   const lower = message.toLowerCase();
   
-  // Check for keywords to guess the type
   if (lower.includes('fix') || lower.includes('bug')) return 'fix';
   if (lower.includes('add') || lower.includes('feat') || lower.includes('new')) return 'feat';
   if (lower.includes('doc') || lower.includes('readme')) return 'docs';
@@ -40,7 +83,6 @@ const inferType = (message: string): string => {
   if (lower.includes('build')) return 'build';
   if (lower.includes('ci')) return 'ci';
   
-  // Default to 'chore' if no specific keywords found
   return 'chore';
 };
 
@@ -48,26 +90,15 @@ const inferType = (message: string): string => {
 // MAIN ANALYZER
 // ----------------------------------------------------------------------
 
-/**
- * Analyzes a commit message using simple rules:
- * 1. Must follow Conventional Commits (type: subject)
- * 2. Must not be too short
- * 3. Must not use vague words
- * 4. Should start with an imperative verb
- * 5. Should not end with a period
- */
 export const analyzeCommit = (message: string): AnalysisResult => {
-  // Initialize result
   let score = 10;
   const feedback: string[] = [];
   const achievements: Achievement[] = [];
   let conventionalType: string | undefined;
 
-  // Basic cleanup
   const trimmedMessage = message.trim();
   const firstLine = trimmedMessage.split('\n')[0];
   
-  // 0. Empty Check
   if (!firstLine) {
     return {
       score: 0,
@@ -76,13 +107,10 @@ export const analyzeCommit = (message: string): AnalysisResult => {
     };
   }
 
-  // 1. Check for Conventional Commit Type (e.g., "feat:", "fix:")
   const conventionalMatch = firstLine.match(/^([a-z]+)(\(.*\))?:/);
   
   if (conventionalMatch) {
     const type = conventionalMatch[1];
-    
-    // Validate if the type is a standard one
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (CONVENTIONAL_TYPES.includes(type as any)) {
       conventionalType = type;
@@ -101,13 +129,11 @@ export const analyzeCommit = (message: string): AnalysisResult => {
     feedback.push("Missing conventional type (e.g., 'feat:', 'fix:').");
   }
 
-  // 2. Length Check (Too short?)
   if (firstLine.length < 10) {
     score -= 2;
     feedback.push("Message is too short.");
   }
 
-  // 3. Vague Words Check (e.g., "stuff", "things")
   const lowerFirstLine = firstLine.toLowerCase();
   const foundVagueWord = VAGUE_WORDS.find(w => lowerFirstLine.includes(w));
   
@@ -116,30 +142,24 @@ export const analyzeCommit = (message: string): AnalysisResult => {
     feedback.push(`Avoid vague words like "${foundVagueWord}". Be specific.`);
   }
 
-  // 4. Imperative Mood Check (e.g., "Add" instead of "Added")
-  // Extract the subject part (after the type)
   const subject = conventionalType ? firstLine.split(':')[1]?.trim() || '' : firstLine;
   const firstWord = subject.split(' ')[0].toLowerCase();
   
-  // Only check if we have a subject
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (subject && !IMPERATIVE_VERBS.includes(firstWord as any)) {
     score -= 1;
     feedback.push("Start subject with an imperative verb (e.g., 'add', 'fix', 'update').");
   }
 
-  // 5. Trailing Period Check
   if (firstLine.endsWith('.')) {
     score -= 1;
     feedback.push("Remove trailing period.");
   }
 
-  // Calculate Final Status
   let status: 'good' | 'warning' | 'bad' = 'good';
   if (score < 6) status = 'bad';
   else if (score < 8) status = 'warning';
 
-  // Check for Perfection
   if (score === 10) {
     achievements.push({
       id: 'perfectionist',
@@ -149,24 +169,13 @@ export const analyzeCommit = (message: string): AnalysisResult => {
     });
   }
 
-  // Generate a Better Suggestion (if score is low)
   let suggestion = "";
   if (score < 10) {
     const type = conventionalType || inferType(firstLine);
     let newSubject = subject || firstLine;
-
-    // Fix: Remove trailing period
-    if (newSubject.endsWith('.')) {
-      newSubject = newSubject.slice(0, -1);
-    }
-
-    // Construct the suggestion
+    if (newSubject.endsWith('.')) newSubject = newSubject.slice(0, -1);
     suggestion = `${type}: ${newSubject}`;
-    
-    // Avoid suggesting the exact same thing
-    if (suggestion === firstLine) {
-      suggestion = "";
-    }
+    if (suggestion === firstLine) suggestion = "";
   }
 
   return {
@@ -194,46 +203,40 @@ export const calculateRepoStats = (
   repoName: string,
   totalCount: number
 ): import('../types').RepoStats => {
-  // Cap analysis to first 50 commits to match original logic
   const analyzedCommits = commits.slice(0, 50);
 
   const goodCommits = analyzedCommits.filter(c => c.analysis?.status === 'good').length;
   const warningCommits = analyzedCommits.filter(c => c.analysis?.status === 'warning').length;
   const badCommits = analyzedCommits.filter(c => c.analysis?.status === 'bad').length;
 
-  // Calculate score
   const averageScore = analyzedCommits.length > 0 
     ? analyzedCommits.reduce((acc, curr) => acc + (curr.analysis?.score || 0), 0) / analyzedCommits.length
     : 0;
 
-  // Aggregate Achievements
   const allAchievements = analyzedCommits.flatMap(c => c.analysis?.achievements || []);
 
-  // Time Distribution & Consistency
   const timeDistribution = { morning: 0, afternoon: 0, evening: 0, night: 0 };
   const typeDistribution: Record<string, number> = {};
   
-  // Consistency: Standard Deviation of scores (inverse)
-  // Higher SD = Lower Consistency. We can map 0 SD -> 100, High SD -> 0.
   const scores = analyzedCommits.map(c => c.analysis?.score || 0);
   const variance = scores.reduce((sum, score) => sum + Math.pow(score - averageScore, 2), 0) / (scores.length || 1);
-  const consistencyScore = Math.max(0, 100 - (Math.sqrt(variance) * 20)); // Arbitrary scaling
+  const consistencyScore = Math.max(0, 100 - (Math.sqrt(variance) * 20));
 
   analyzedCommits.forEach(c => {
-    // Time
     const hour = new Date(c.author.date).getHours();
     if (hour >= 6 && hour < 12) timeDistribution.morning++;
     else if (hour >= 12 && hour < 18) timeDistribution.afternoon++;
     else if (hour >= 18 && hour < 24) timeDistribution.evening++;
     else timeDistribution.night++;
 
-    // Type
     if (c.analysis?.conventionalType) {
       typeDistribution[c.analysis.conventionalType] = (typeDistribution[c.analysis.conventionalType] || 0) + 1;
     } else {
       typeDistribution['unknown'] = (typeDistribution['unknown'] || 0) + 1;
     }
   });
+
+  const developerType = getDeveloperType(timeDistribution, analyzedCommits);
 
   return {
     repoName,
@@ -246,6 +249,7 @@ export const calculateRepoStats = (
     timeDistribution,
     typeDistribution,
     consistencyScore,
+    developerType,
     achievements: allAchievements,
   };
 };
