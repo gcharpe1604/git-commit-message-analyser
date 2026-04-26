@@ -4,7 +4,7 @@
 
 export const CONSTANTS = {
   API: {
-    COMMITS_PER_PAGE: 50,
+    COMMITS_PER_PAGE: 100,
     REPOS_PER_PAGE: 100,
     CACHE_DURATION: 5 * 60 * 1000, // 5 minutes
     RETRY_ATTEMPTS: 3,

@@ -29,9 +29,8 @@ function App() {
   const [userRepos, setUserRepos] = useState<Repository[]>([]);
   const [searchedUser, setSearchedUser] = useState<string | null>(null);
   const [stats, setStats] = useState<RepoStats | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [, setApiPage] = useState(1);
+  const [fetchingMore, setFetchingMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -75,8 +74,7 @@ function App() {
   const analyzeRepo = async (url: string) => {
     setLoading(true);
     setError(null);
-    setPage(1);
-    setVisibleCount(20);
+    setApiPage(1);
     setViewMode("analysis");
 
     try {
@@ -85,7 +83,6 @@ function App() {
         1,
       );
       setCommits(fetchedCommits);
-      setHasMore(fetchedCommits.length < totalCount);
 
       const repoName = url.split("github.com/")[1] || url;
       const newStats = calculateRepoStats(fetchedCommits, repoName, totalCount);
@@ -150,61 +147,37 @@ function App() {
     }
   };
 
-  const handleLoadMore = async () => {
-    if (!stats || loading) return;
+  const handleLoadMoreCommits = async (targetApiPage: number) => {
+    if (!stats || fetchingMore) return;
 
-    // If we have more commits locally than currently visible, just show them
-    if (visibleCount < commits.length) {
-      setVisibleCount((prev) => Math.min(prev + 20, commits.length));
-      return;
-    }
-
-    // Otherwise fetch next page
-    setLoading(true);
-    const nextPage = page + 1;
-
+    setFetchingMore(true);
     try {
-      // Construct URL from repoName (assuming it's owner/repo)
       const url = `https://github.com/${stats.repoName}`;
+      const { commits: newCommits } = await fetchCommits(url, targetApiPage);
 
-      const { commits: newCommits, totalCount } = await fetchCommits(
-        url,
-        nextPage,
-      );
-
-      if (newCommits.length === 0) {
-        setHasMore(false);
-        return;
+      if (newCommits.length > 0) {
+        setCommits((prev) => {
+          const existingShas = new Set(prev.map(c => c.sha));
+          const uniqueNew = newCommits.filter(c => !existingShas.has(c.sha));
+          return [...prev, ...uniqueNew];
+        });
+        setApiPage(targetApiPage);
       }
-
-      const updatedCommits = [...commits, ...newCommits];
-      setCommits(updatedCommits);
-      setPage(nextPage);
-      setVisibleCount((prev) => prev + 20);
-      setHasMore(updatedCommits.length < totalCount);
-
-      // Recalculate stats with ALL commits
-      const newStats = calculateRepoStats(
-        updatedCommits,
-        stats.repoName,
-        totalCount,
-      );
-      setStats(newStats);
-    } catch {
-      setError("Failed to load more commits");
+    } catch (err) {
+      console.error("Failed to fetch more commits:", err);
     } finally {
-      setLoading(false);
+      setFetchingMore(false);
     }
   };
+
 
   const handleReset = () => {
     setViewMode("input");
     setCommits([]);
     setStats(null);
+    setApiPage(1);
     setUserRepos([]);
     setError(null);
-    setPage(1);
-    setHasMore(false);
   };
 
   const handleBack = () => {
@@ -579,32 +552,13 @@ function App() {
                     <SummarySection stats={stats} />
                   </div>
                 )}
-                <CommitList commits={commits.slice(0, visibleCount)} />
-
-                {(hasMore || visibleCount < commits.length) && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      marginTop: "2rem",
-                      marginBottom: "4rem",
-                    }}
-                  >
-                    <button
-                      onClick={handleLoadMore}
-                      disabled={loading}
-                      className="btn-secondary"
-                      style={{
-                        minWidth: "200px",
-                        display: "inline-flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      {loading ? <>Loading...</> : <>👇 Load More Commits</>}
-                    </button>
-                  </div>
-                )}
+                <CommitList 
+                  key={stats?.repoName ?? ''} 
+                  commits={commits} 
+                  totalCommitsCount={stats?.totalCommits}
+                  isLoading={fetchingMore}
+                  onFetchCommits={handleLoadMoreCommits}
+                />
               </>
             ) : (
               <Playground />
