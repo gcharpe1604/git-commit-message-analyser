@@ -13,6 +13,12 @@
 
 ---
 
+## 📈 Status
+
+Actively developed. Open to feedback and improvements.
+
+---
+
 ## 🚀 Overview
 
 GitAnalyzer fetches commit data from any public GitHub user or repository and applies a rule-based scoring system to evaluate commit message quality. It surfaces common problems — vague language, missing structure, inconsistent style — and gives concrete suggestions to fix them.
@@ -134,6 +140,21 @@ Each commit message starts at a score of 10. Points are deducted for:
     │  - Auth (email/password)│
     │  - Analysis persistence │
     └─────────────────────────┘
+```
+
+---
+
+## 📁 Project Structure
+
+```
+src/
+├── components/       # Reusable UI components (React)
+├── contexts/         # React Context providers (Auth, Theme)
+├── services/         # External API integrations (GitHub, Supabase, LLMs)
+├── types/            # TypeScript type definitions
+├── utils/            # Helper functions and analysis logic
+├── App.tsx           # Main application component
+└── main.tsx          # Application entry point
 ```
 
 ---
