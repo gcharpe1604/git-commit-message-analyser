@@ -154,8 +154,6 @@ Each commit message starts at a score of 10. Points are deducted for:
 
 ## Screenshots
 
-> _Add screenshots of the following views:_
-
 | Dashboard | Commit Analysis | AI Suggestion |
 |---|---|---|
 | ![Dashboard](./screenshots/dashboard.png) | ![Analysis](./screenshots/analysis.png) | ![AI](./screenshots/ai-suggestion.png) |
