@@ -380,7 +380,7 @@ function App() {
                       color: "var(--status-good)",
                     }}
                   >
-                    {historyItems[0].averageScore}
+                    {historyItems[0].averageScore.toFixed(1)}
                   </div>
                 </div>
                 <div

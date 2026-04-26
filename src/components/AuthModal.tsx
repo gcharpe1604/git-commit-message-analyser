@@ -53,8 +53,9 @@ export const AuthModal = ({ isOpen, onClose }: AuthModalProps) => {
         if (error) throw error;
         onClose();
       }
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred";
+      setError(message);
     } finally {
       setLoading(false);
     }
