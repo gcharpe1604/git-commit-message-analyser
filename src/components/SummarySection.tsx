@@ -37,6 +37,10 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
     timeDistribution,
     achievements,
     developerType,
+    subScores,
+    topIssues,
+    suggestions,
+    confidenceLabel,
   } = stats;
 
   const analyzedCount = goodCommits + warningCommits + badCommits;
@@ -156,9 +160,10 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
             gap: "1.25rem",
-            marginBottom: "2rem",
+            marginBottom: "1rem",
           }}
         >
+          {/* Average Score card */}
           <div
             className="text-center"
             style={{
@@ -168,14 +173,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
               border: `1px solid color-mix(in srgb, ${getScoreColor(averageScore)} 30%, transparent)`,
             }}
           >
-            <div
-              style={{
-                fontSize: "3rem",
-                fontWeight: "800",
-                color: getScoreColor(averageScore),
-                lineHeight: 1,
-              }}
-            >
+            <div style={{ fontSize: "3rem", fontWeight: "800", color: getScoreColor(averageScore), lineHeight: 1 }}>
               {averageScore.toFixed(1)}
             </div>
             <div style={{ color: "var(--text-secondary)", marginTop: "0.5rem", fontWeight: 500, fontSize: "0.9rem" }}>
@@ -186,6 +184,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             </div>
           </div>
 
+          {/* Total Commits card */}
           <div
             className="text-center"
             style={{
@@ -203,6 +202,57 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             </div>
           </div>
         </div>
+
+        {/* Score explanation + confidence label */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem" }}>
+          <span style={{ fontSize: "0.78rem", color: "var(--text-tertiary)" }}>
+            Score is based on clarity, structure, and consistency of commit messages
+          </span>
+          {confidenceLabel && (
+            <span style={{
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              padding: "0.2rem 0.65rem",
+              borderRadius: "999px",
+              background: confidenceLabel.startsWith("Low")
+                ? "var(--status-warning-bg)"
+                : "var(--status-good-bg)",
+              color: confidenceLabel.startsWith("Low")
+                ? "var(--status-warning)"
+                : "var(--status-good)",
+              border: `1px solid ${confidenceLabel.startsWith("Low") ? "var(--status-warning)" : "var(--status-good)"}`,
+            }}>
+              {confidenceLabel.startsWith("Low") ? "⚠ " : "✓ "}{confidenceLabel}
+            </span>
+          )}
+        </div>
+
+        {/* Sub-scores */}
+        {subScores && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "2rem" }}>
+            {([ 
+              { label: "Clarity", value: subScores.clarity, icon: "💬" },
+              { label: "Consistency", value: subScores.consistency, icon: "📐" },
+              { label: "Structure", value: subScores.structure, icon: "🏷" },
+            ] as const).map(({ label, value, icon }) => (
+              <div key={label} style={{
+                padding: "0.75rem",
+                background: "var(--bg-page)",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-subtle)",
+                textAlign: "center",
+              }}>
+                <div style={{ fontSize: "1.2rem", marginBottom: "0.2rem" }}>{icon}</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: 700, color: getScoreColor(value), lineHeight: 1 }}>
+                  {value}/10
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                  {label}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ── Score Distribution ── */}
         {analyzedCount > 0 ? (
@@ -358,6 +408,62 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
         ) : (
           <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-secondary)", border: "1px dashed var(--border-subtle)", borderRadius: "10px" }}>
             Not enough data to generate insights
+          </div>
+        )}
+
+        {/* ── Top Issues ── */}
+        {topIssues && topIssues.length > 0 && (
+          <div style={{ marginTop: "2rem" }}>
+            <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              ⚠ Top Issues
+            </h4>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {topIssues.map((issue, i) => (
+                <li key={i} style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.6rem",
+                  padding: "0.65rem 0.85rem",
+                  background: "var(--status-bad-bg)",
+                  border: "1px solid color-mix(in srgb, var(--status-bad) 25%, transparent)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.85rem",
+                  color: "var(--text-secondary)",
+                  lineHeight: "1.4",
+                }}>
+                  <span style={{ color: "var(--status-bad)", flexShrink: 0, fontWeight: 700 }}>•</span>
+                  {issue}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ── Suggested Improvements ── */}
+        {suggestions && suggestions.length > 0 && (
+          <div style={{ marginTop: "1.25rem" }}>
+            <h4 style={{ margin: "0 0 0.75rem 0", color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              💡 Suggested Improvements
+            </h4>
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {suggestions.map((s, i) => (
+                <li key={i} style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "0.6rem",
+                  padding: "0.65rem 0.85rem",
+                  background: "var(--status-good-bg)",
+                  border: "1px solid color-mix(in srgb, var(--status-good) 25%, transparent)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "0.85rem",
+                  color: "var(--text-secondary)",
+                  lineHeight: "1.4",
+                }}>
+                  <span style={{ color: "var(--status-good)", flexShrink: 0, fontWeight: 700 }}>→</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

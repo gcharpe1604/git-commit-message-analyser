@@ -131,8 +131,12 @@ export const InputSection = ({
           disabled={isLoading}
           style={{ whiteSpace: "nowrap" }}
         >
-          {isLoading ? "Analyzing..." : "Analyze"}
+          {isLoading ? "Analyzing..." : "Analyze Repository"}
         </button>
+        </div>
+        {/* Helper text */}
+        <div style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: "-0.25rem" }}>
+          Enter a GitHub username (e.g. <strong style={{ color: "var(--text-secondary)" }}>torvalds</strong>) or repository (e.g. <strong style={{ color: "var(--text-secondary)" }}>owner/repo</strong>)
         </div>
       </form>
 

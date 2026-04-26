@@ -52,6 +52,10 @@ export interface RepoStats {
   typeDistribution?: Record<string, number>;
   consistencyScore?: number;
   developerType?: string;
+  subScores?: { clarity: number; consistency: number; structure: number };
+  topIssues?: string[];
+  suggestions?: string[];
+  confidenceLabel?: string;
   achievements?: Achievement[];
   tags?: string[];
   scoreHistory?: { date: string; score: number }[];

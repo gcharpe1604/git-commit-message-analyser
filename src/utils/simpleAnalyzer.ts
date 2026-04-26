@@ -238,6 +238,57 @@ export const calculateRepoStats = (
 
   const developerType = getDeveloperType(timeDistribution, analyzedCommits);
 
+  // ── Sub-Scores ─────────────────────────────────────────────────────────
+  // Clarity: penalise commits that have vague words or no-content subject
+  const VAGUE = ['fix', 'update', 'wip', 'misc', 'changes', 'stuff', 'work', 'done'];
+  const vagueCount = analyzedCommits.filter(c =>
+    VAGUE.some(v => c.message.toLowerCase().split(':').pop()?.trim().startsWith(v) ?? false)
+  ).length;
+  const clarityScore = Math.round(
+    Math.max(0, 10 - (vagueCount / (analyzedCommits.length || 1)) * 10)
+  );
+
+  // Consistency: inverse of score variance (normalised to 0-10)
+  const consistencySubScore = Math.round(consistencyScore / 10);
+
+  // Structure: percentage of commits that follow conventional commits
+  const structuredCount = analyzedCommits.filter(c => c.analysis?.checklist?.hasType).length;
+  const structureScore = Math.round((structuredCount / (analyzedCommits.length || 1)) * 10);
+
+  const subScores = {
+    clarity: clarityScore,
+    consistency: consistencySubScore,
+    structure: structureScore,
+  };
+
+  // ── Top Issues ─────────────────────────────────────────────────────────
+  const topIssues: string[] = [];
+  const vagueRatio = vagueCount / (analyzedCommits.length || 1);
+  if (vagueRatio > 0.3)
+    topIssues.push(`${Math.round(vagueRatio * 100)}% of commit messages start with vague words like "fix" or "update"`);
+  if (structureScore < 5)
+    topIssues.push('Most commits are missing structured prefixes like "feat:" or "fix:"');
+  if (consistencySubScore < 5)
+    topIssues.push('Commit message quality is inconsistent across the repository');
+  if (badCommits / (analyzedCommits.length || 1) > 0.4)
+    topIssues.push(`${Math.round((badCommits / (analyzedCommits.length || 1)) * 100)}% of commits scored below 6 — needs significant improvement`);
+
+  // ── Suggestions ────────────────────────────────────────────────────────
+  const suggestions: string[] = [];
+  if (structureScore < 7)
+    suggestions.push('Adopt Conventional Commits — prefix messages with "feat:", "fix:", "chore:", etc.');
+  if (vagueRatio > 0.2)
+    suggestions.push('Replace generic words like "update" or "fix" with a specific description of the change');
+  if (consistencySubScore < 7)
+    suggestions.push('Aim for a consistent commit message style across all contributors');
+  if (clarityScore < 7)
+    suggestions.push('Use descriptive subject lines that explain what changed and why');
+
+  // ── Confidence Label ───────────────────────────────────────────────────
+  const confidenceLabel = analyzedCommits.length < 20
+    ? 'Low confidence — limited commit data'
+    : 'Based on recent commit history';
+
   return {
     repoName,
     averageScore,
@@ -250,6 +301,10 @@ export const calculateRepoStats = (
     typeDistribution,
     consistencyScore,
     developerType,
+    subScores,
+    topIssues,
+    suggestions,
+    confidenceLabel,
     achievements: allAchievements,
   };
 };
