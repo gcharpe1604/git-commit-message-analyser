@@ -1,7 +1,7 @@
 import { FcFlashOn } from "react-icons/fc";
 import { FaGamepad } from "react-icons/fa";
 import { MdInsights } from "react-icons/md";
-import { MdHistory } from "react-icons/md";
+import { MdHistory, MdMenu, MdClose } from "react-icons/md";
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { InputSection } from "./components/InputSection";
@@ -13,6 +13,7 @@ import { Playground } from "./components/Playground";
 import { ExportButton } from "./components/ExportButton";
 import { UserRepoList } from "./components/UserRepoList";
 import { AuthButton } from "./components/AuthButton";
+import { MobileSidebar } from "./components/MobileSidebar";
 import { fetchCommits, fetchUserRepos } from "./services/githubService";
 import { saveAnalysis, getHistory } from "./services/storageService";
 import { saveAnalysisToCloud } from "./services/analysisService";
@@ -35,6 +36,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"analyze" | "playground">(
     "analyze",
   );
@@ -193,6 +195,7 @@ function App() {
   return (
     <div className="container">
       <header
+        className="app-header"
         style={{
           position: "sticky",
           top: "1.5rem",
@@ -247,7 +250,15 @@ function App() {
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+        <button 
+          className="mobile-menu-btn" 
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label="Toggle mobile menu"
+        >
+          {isMobileMenuOpen ? <MdClose /> : <MdMenu />}
+        </button>
+
+        <div className="app-header-controls desktop-only" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <button
             onClick={() => setShowHistory(true)}
             className="btn-secondary"
@@ -306,6 +317,7 @@ function App() {
                 }}
               >
                 <h1
+                  className="welcome-title"
                   style={{
                     fontSize: "3rem",
                     fontWeight: 800,
@@ -392,6 +404,7 @@ function App() {
                 }}
               >
                 <h1
+                  className="hero-title"
                   style={{
                     fontSize: "4.5rem",
                     fontWeight: 800,
@@ -441,6 +454,7 @@ function App() {
             />
 
             <div
+              className="feature-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
@@ -574,6 +588,13 @@ function App() {
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
         onSelectRepo={analyzeRepo}
+      />
+
+      <MobileSidebar
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        onOpenHistory={() => setShowHistory(true)}
+        onOpenSettings={() => setShowSettings(true)}
       />
     </div>
   );

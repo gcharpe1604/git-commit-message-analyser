@@ -1,0 +1,14 @@
+feat(ui): implement responsive mobile layout and glassmorphic sidebar
+
+This commit completely revamps the mobile user experience by introducing a responsive grid system and a new glassmorphic mobile navigation sidebar. The previous layout broke on small viewports due to fixed widths and inline flex containers without wrap.
+
+Key changes:
+- **Mobile Navigation Menu**: Added a new `MobileSidebar` component that overlays the screen on mobile devices with a blur backdrop (`backdrop-filter: blur(20px)`), containing quick actions (History, API Keys, Theme Toggle, Auth) without shifting page content.
+- **Responsive Layout System**: Migrated hardcoded inline styles in `App.tsx` and sub-components to robust CSS classes in `index.css` under a `max-width: 768px` media query.
+- **Adaptive Components**:
+  - `InputSection`: Stacks the search input and submit button vertically on mobile.
+  - `SummarySection`: Wraps the stat cards, sub-scores, and time distribution charts into mobile-friendly columns.
+  - `HistorySidebar`: Updated fixed 400px width to `min(400px, 100vw)` to prevent overflow on smaller screens like the iPhone SE.
+- **Refactoring**: Cleaned up the header controls in `App.tsx` to conditionally render the new hamburger toggle button exclusively for mobile viewports.
+
+This establishes a solid foundation for future mobile capabilities (e.g., Progressive Web App).

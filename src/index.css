@@ -371,3 +371,89 @@ textarea:focus-visible {
   color: var(--status-bad) !important;
   transform: translateY(-50%) scale(1.1) !important;
 }
+
+/* Mobile Menu Button */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+
+.mobile-menu-btn:hover {
+  color: var(--accent-primary);
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app-header {
+    flex-wrap: wrap !important;
+    gap: 1rem;
+    padding: 1rem !important;
+    margin-bottom: 2rem !important;
+  }
+  .app-header-controls {
+    display: none !important;
+  }
+  .hero-title {
+    font-size: clamp(2.5rem, 8vw, 3.5rem) !important;
+  }
+  .welcome-title {
+    font-size: clamp(2rem, 6vw, 2.5rem) !important;
+  }
+  .feature-grid {
+    grid-template-columns: 1fr !important;
+    margin-top: 4rem !important;
+  }
+  .input-form-row {
+    flex-direction: column !important;
+    width: 100%;
+  }
+  .input-form-row button {
+    width: 100%;
+  }
+  .container {
+    padding: 1rem !important;
+  }
+  .commit-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .commit-card-score {
+    text-align: left !important;
+    margin-top: 0.5rem;
+  }
+  .repo-title-link {
+    font-size: 1.5rem !important;
+    word-break: break-all;
+  }
+  .summary-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .summary-subscores-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .time-distribution-container {
+    flex-wrap: wrap !important;
+  }
+  .time-distribution-item {
+    min-width: 40% !important;
+    margin-bottom: 1rem;
+  }
+  .repo-list-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .recent-searches-container {
+    justify-content: center !important;
+  }
+}
+

@@ -85,6 +85,7 @@ export const UserRepoList = ({
         )}
       </div>
       <div
+        className="repo-list-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",

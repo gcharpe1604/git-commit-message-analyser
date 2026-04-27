@@ -91,7 +91,7 @@ export const InputSection = ({
             Repository
           </button>
         </div>
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div className="input-form-row" style={{ display: "flex", gap: "0.75rem" }}>
         <div className="input-group" style={{ flex: 1 }}>
           <div
             style={{
@@ -143,6 +143,7 @@ export const InputSection = ({
       {recentSearches.length > 0 && (
         <div style={{ marginTop: "1rem" }}>
           <div
+            className="recent-searches-container"
             style={{
               display: "flex",
               gap: "0.5rem",

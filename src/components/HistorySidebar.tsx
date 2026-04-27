@@ -231,7 +231,7 @@ export const HistorySidebar = ({
           top: 0,
           right: 0,
           bottom: 0,
-          width: "400px",
+          width: "min(400px, 100vw)",
           background: "var(--bg-panel)",
           borderLeft: "1px solid var(--border-subtle)",
           transform: isOpen ? "translateX(0)" : "translateX(100%)",

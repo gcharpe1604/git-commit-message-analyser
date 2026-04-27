@@ -159,6 +159,7 @@ export const CommitCard = memo(
         }}
       >
         <div
+          className="commit-card-header"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -244,7 +245,7 @@ export const CommitCard = memo(
             </div>
           </div>
 
-          <div style={{ textAlign: "right" }}>
+          <div className="commit-card-score" style={{ textAlign: "right" }}>
             <div
               style={{
                 fontSize: "1.25rem",

@@ -75,7 +75,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             style={{ textDecoration: "none" }}
           >
             <h2
-              className="repo-link"
+              className="repo-link repo-title-link"
               style={{
                 margin: 0,
                 fontSize: "2.25rem",
@@ -156,6 +156,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
 
         {/* ── Stat Cards ── */}
         <div
+          className="summary-stats-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
@@ -229,7 +230,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
 
         {/* Sub-scores */}
         {subScores && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "2rem" }}>
+          <div className="summary-subscores-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "2rem" }}>
             {([ 
               { label: "Clarity", value: subScores.clarity, icon: "💬" },
               { label: "Consistency", value: subScores.consistency, icon: "📐" },
@@ -350,7 +351,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
             <h4 style={{ margin: "0 0 1rem 0", color: "var(--text-secondary)", fontSize: "0.85rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Commit Time Distribution
             </h4>
-            <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+            <div className="time-distribution-container" style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
               {Object.entries(timeDistribution).map(([period, count]) => {
                 const max = Math.max(...Object.values(timeDistribution));
                 const height = max > 0 ? (count / max) * 100 : 0;
@@ -363,7 +364,7 @@ export const SummarySection = ({ stats }: SummarySectionProps) => {
                 const isHighest = count === max && max > 0;
 
                 return (
-                  <div key={period} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                  <div key={period} className="time-distribution-item" style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
                     <div style={{ height: "100px", width: "100%", display: "flex", alignItems: "flex-end", position: "relative" }}>
                       <div
                         style={{
