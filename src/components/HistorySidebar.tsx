@@ -2,20 +2,10 @@ import { useEffect, useState, useMemo } from "react";
 import { Empty } from "antd";
 import {
   MdSearch,
-  MdDelete,
-  MdFileDownload,
-  MdClose,
   MdCloud,
-  MdLabel,
 } from "react-icons/md";
-import { getHistory, saveAnalysis } from "../services/storageService";
-import {
-  exportHistoryToCSV,
-  exportHistoryToJSON,
-  downloadFile,
-} from "../utils/export";
+import { getHistory } from "../services/storageService";
 import type { RepoStats } from "../types";
-import { TagModal } from "./TagModal";
 import { useAuth } from "../hooks/useAuth";
 import { fetchUserAnalyses } from "../services/analysisService";
 
@@ -41,36 +31,21 @@ export const HistorySidebar = ({
   const [history, setHistory] = useState<RepoStats[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date-desc");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filterScore, setFilterScore] = useState<
     "all" | "good" | "warning" | "bad"
   >("all");
-  const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isCloudSynced, setIsCloudSynced] = useState(false);
-  const [tagModalRepo, setTagModalRepo] = useState<string | null>(null);
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-
-  // Reset selected IDs when the sidebar closes (derived state pattern)
-  if (isOpen !== prevIsOpen) {
-    setPrevIsOpen(isOpen);
-    if (!isOpen && selectedIds.length > 0) {
-      setSelectedIds([]);
-    }
-  }
 
   useEffect(() => {
     const localHistory = getHistory();
 
     if (user) {
-      // Logged in: merge cloud data with local
       fetchUserAnalyses(user.id).then((cloudData) => {
         setIsCloudSynced(true);
         if (cloudData.length === 0) {
           setHistory(localHistory);
           return;
         }
-        // Build a map from cloud data, then overlay local data on top
         const cloudMap = new Map<string, RepoStats>();
         cloudData.forEach((r) => {
           cloudMap.set(r.repo_name, {
@@ -83,22 +58,21 @@ export const HistorySidebar = ({
             lastAnalyzed: r.created_at || new Date().toISOString(),
           });
         });
-        // Local data is richer (has breakdowns) — prefer it when available
         localHistory.forEach((local) => {
           cloudMap.set(local.repoName, local);
         });
         setHistory(Array.from(cloudMap.values()));
       }).catch(() => {
+        setIsCloudSynced(false);
         setHistory(localHistory);
       });
     } else {
-      // Guest: use localStorage only
       setTimeout(() => {
         setIsCloudSynced(false);
         setHistory(localHistory);
       }, 0);
     }
-  }, [isOpen, refreshTrigger, user]);
+  }, [isOpen, user]);
 
   const filteredHistory = useMemo(() => {
     return history
@@ -114,8 +88,7 @@ export const HistorySidebar = ({
             : filterScore === "warning"
             ? item.averageScore >= 5 && item.averageScore < 8
             : item.averageScore < 5;
-        const matchesTag = filterTag ? item.tags?.includes(filterTag) : true;
-        return matchesSearch && matchesScore && matchesTag;
+        return matchesSearch && matchesScore;
       })
       .sort((a, b) => {
         switch (sort) {
@@ -139,72 +112,7 @@ export const HistorySidebar = ({
             return 0;
         }
       });
-  }, [history, search, sort, filterScore, filterTag]);
-
-  const allTags = useMemo(() => {
-    const tags = new Set<string>();
-    history.forEach((item) => {
-      item.tags?.forEach((tag) => tags.add(tag));
-    });
-    return Array.from(tags).sort();
-  }, [history]);
-
-  const handleBulkDelete = () => {
-    if (confirm(`Delete ${selectedIds.length} items?`)) {
-      const newHistory = history.filter(
-        (item) => !selectedIds.includes(item.repoName)
-      );
-      // In a real app we'd adhere to the single source of truth better, but here we just overwrite
-      localStorage.setItem("git_analyzer_history", JSON.stringify(newHistory));
-      setHistory(newHistory);
-      setSelectedIds([]);
-    }
-  };
-
-  const handleBulkExport = (format: "csv" | "json") => {
-    const itemsToExport = history.filter((item) =>
-      selectedIds.includes(item.repoName)
-    );
-    const filename = `git-analysis-export-${
-      new Date().toISOString().split("T")[0]
-    }`;
-
-    if (format === "csv") {
-      const content = exportHistoryToCSV(itemsToExport);
-      downloadFile(content, `${filename}.csv`, "text/csv");
-    } else {
-      const content = exportHistoryToJSON(itemsToExport);
-      downloadFile(content, `${filename}.json`, "application/json");
-    }
-  };
-
-  const handleAddTag = (tag: string) => {
-    if (!tagModalRepo) return;
-
-    const item = history.find((h) => h.repoName === tagModalRepo);
-    if (item) {
-      // Prevent duplicates
-      if (item.tags?.includes(tag)) return;
-
-      const updatedItem = { ...item, tags: [...(item.tags || []), tag] };
-      saveAnalysis(updatedItem);
-      setRefreshTrigger((prev) => prev + 1);
-    }
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    if (!tagModalRepo) return;
-
-    const item = history.find((h) => h.repoName === tagModalRepo);
-    if (item) {
-      const updatedItem = {
-        ...item,
-        tags: (item.tags || []).filter((t) => t !== tag),
-      };
-      saveAnalysis(updatedItem);
-      setRefreshTrigger((prev) => prev + 1);
-    }
-  };
+  }, [history, search, sort, filterScore]);
 
   return (
     <>
@@ -325,7 +233,6 @@ export const HistorySidebar = ({
             </select>
           </div>
 
-
           <div
             style={{
               display: "flex",
@@ -358,63 +265,6 @@ export const HistorySidebar = ({
               </button>
             ))}
           </div>
-
-          {/* Tag Filters */}
-          {allTags.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                overflowX: "auto",
-                paddingBottom: "0.25rem",
-                marginTop: "0.5rem",
-                borderTop: "1px dashed var(--border-subtle)",
-                paddingTop: "0.5rem",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  fontSize: "0.8rem",
-                  color: "var(--text-tertiary)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <MdLabel style={{ marginRight: "0.25rem" }} /> Filter:
-              </div>
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setFilterTag(filterTag === tag ? null : tag)}
-                  style={{
-                    padding: "0.1rem 0.6rem",
-                    borderRadius: "12px",
-                    border: "1px solid",
-                    borderColor:
-                      filterTag === tag
-                        ? "var(--accent-primary)"
-                        : "var(--border-subtle)",
-                    background:
-                      filterTag === tag
-                        ? "var(--accent-primary)"
-                        : "transparent",
-                    color:
-                      filterTag === tag ? "white" : "var(--text-secondary)",
-                    fontSize: "0.75rem",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.2rem",
-                  }}
-                >
-                  {tag}
-                  {filterTag === tag && <MdClose size={12} />}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* List */}
@@ -455,9 +305,7 @@ export const HistorySidebar = ({
                   className="panel"
                   style={{
                     padding: "1rem",
-                    border: selectedIds.includes(item.repoName)
-                      ? "1px solid var(--accent-primary)"
-                      : "1px solid var(--border-subtle)",
+                    border: "1px solid var(--border-subtle)",
                     position: "relative",
                   }}
                 >
@@ -468,9 +316,8 @@ export const HistorySidebar = ({
                       alignItems: "flex-start",
                     }}
                   >
-
                     <div
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, cursor: "pointer" }}
                       onClick={() => {
                         onSelectRepo(`https://github.com/${item.repoName}`);
                         onClose();
@@ -516,10 +363,6 @@ export const HistorySidebar = ({
                         </span>
                         <span>{item.totalCommits} commits</span>
                       </div>
-
-
-
-
                     </div>
                   </div>
                 </div>
@@ -527,57 +370,7 @@ export const HistorySidebar = ({
             </div>
           )}
         </div>
-
-        {/* Footer actions */}
-        {selectedIds.length > 0 && (
-          <div
-            style={{
-              padding: "1rem",
-              borderTop: "1px solid var(--border-subtle)",
-              background: "var(--bg-panel)",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <span style={{ fontSize: "0.9rem", fontWeight: 600 }}>
-              {selectedIds.length} selected
-            </span>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => handleBulkDelete()}
-                className="btn-ghost"
-                style={{ color: "var(--status-bad)", padding: "0.5rem" }}
-                title="Delete"
-              >
-                <MdDelete size={20} />
-              </button>
-              <button
-                onClick={() => handleBulkExport("csv")}
-                className="btn-ghost"
-                style={{ padding: "0.5rem" }}
-                title="Export CSV"
-              >
-                <MdFileDownload size={20} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* Tag Modal */}
-      {tagModalRepo && (
-        <TagModal
-          isOpen={!!tagModalRepo}
-          onClose={() => setTagModalRepo(null)}
-          repoName={tagModalRepo}
-          currentTags={
-            history.find((h) => h.repoName === tagModalRepo)?.tags || []
-          }
-          onAddTag={handleAddTag}
-          onRemoveTag={handleRemoveTag}
-        />
-      )}
     </>
   );
 };

@@ -3,6 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import { MdLogout, MdPerson, MdLogin, MdSettings } from "react-icons/md";
 import { AuthModal } from "./AuthModal";
 import { ThemeToggle } from "./ThemeToggle";
+import { Loader } from "./Loader";
 
 export const AuthButton = ({ onOpenSettings }: { onOpenSettings: () => void }) => {
   const { user, loading, signOut } = useAuth();
@@ -22,12 +23,7 @@ export const AuthButton = ({ onOpenSettings }: { onOpenSettings: () => void }) =
   }, []);
 
   if (loading) {
-    return (
-      <div style={{
-        width: "32px", height: "32px", borderRadius: "50%",
-        background: "var(--bg-page)", animation: "pulse 1.5s infinite",
-      }} />
-    );
+    return <Loader size={0.3} style={{ padding: 0 }} />;
   }
 
   const avatarUrl = user?.user_metadata?.avatar_url;

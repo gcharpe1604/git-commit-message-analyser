@@ -1,5 +1,5 @@
 import { useState, useMemo, useTransition } from "react";
-import { Spin } from "antd";
+import { Loader } from "./Loader";
 import type { Commit } from "../types";
 import { CommitCard } from "./CommitCard";
 
@@ -104,8 +104,8 @@ export const CommitList = ({ commits, totalCommitsCount, isLoading, onFetchCommi
       </h2>
 
       {(isLoading && visibleCommits.length === 0) || isPending ? (
-        <div style={{ padding: "8rem 2rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-          <Spin size="large" />
+        <div style={{ padding: "8rem 2rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "1.5rem" }}>
+          <Loader size={1.2} />
           <div style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Loading commits...</div>
         </div>
       ) : (

@@ -16,13 +16,4 @@ export function sanitizeInput(input: string): string {
     .trim();
 }
 
-/**
- * Sanitize HTML for safe display
- * @param html - Raw HTML string
- * @returns Sanitized HTML
- */
-export function sanitizeHTML(html: string): string {
-  const div = document.createElement('div');
-  div.textContent = html;
-  return div.innerHTML;
-}
+

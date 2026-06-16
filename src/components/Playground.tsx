@@ -224,9 +224,9 @@ export const Playground = () => {
                       position: "absolute",
                       bottom: "1rem",
                       right: "1rem",
-                      background: "rgba(109, 40, 217, 0.1)",
-                      color: "var(--accent-primary)",
-                      borderColor: "rgba(109, 40, 217, 0.2)",
+                      background: "color-mix(in srgb, var(--accent-text) 12%, transparent)",
+                      color: "var(--accent-text)",
+                      borderColor: "color-mix(in srgb, var(--accent-text) 30%, transparent)",
                       backdropFilter: "blur(4px)",
                       fontWeight: 600,
                     }}

@@ -28,14 +28,4 @@ export function getRelativeTime(date: string): string {
   return past.toLocaleDateString();
 }
 
-/**
- * Get time period from hour
- * @param hour - Hour of the day (0-23)
- * @returns Time period name
- */
-export function getTimePeriod(hour: number): 'morning' | 'afternoon' | 'evening' | 'night' {
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'afternoon';
-  if (hour >= 18 && hour < 24) return 'evening';
-  return 'night';
-}
+
