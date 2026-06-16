@@ -22,7 +22,8 @@ import { calculateRepoStats } from "./utils/simpleAnalyzer";
 import type { Commit, RepoStats, Repository } from "./types";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { CONSTANTS } from "./constants";
-import { Result, Spin, Badge } from "antd";
+import { Result, Badge } from "antd";
+import { Loader } from "./components/Loader";
 
 function App() {
   const { user } = useAuth();
@@ -503,8 +504,8 @@ function App() {
         )}
         {viewMode === "analysis" && (
           loading ? (
-            <div style={{ padding: "8rem 2rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-              <Spin size="large" />
+            <div style={{ padding: "8rem 2rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+              <Loader size={1.5} />
               <div style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Analyzing repository...</div>
             </div>
           ) : (
