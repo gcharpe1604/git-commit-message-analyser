@@ -21,6 +21,13 @@ export interface AnalysisResult {
   achievements?: Achievement[];
   suggestion?: string;
   checklist?: Checklist;
+  dimensions?: {
+    format: number;
+    clarity: number;
+    style: number;
+    context: number;
+    hygiene: number;
+  };
 }
 
 export interface Commit {
