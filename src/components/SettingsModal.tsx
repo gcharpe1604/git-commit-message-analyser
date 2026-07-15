@@ -1,232 +1,27 @@
 import { useState } from "react";
-import { MdClose, MdCheckCircle, MdEdit, MdDelete } from "react-icons/md";
+import { MdCheck, MdClose, MdDelete, MdEdit, MdKey } from "react-icons/md";
 import { useLLM } from "../hooks/useLLM";
+import { useAuth } from "../hooks/useAuth";
 
-interface SettingsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-interface KeyFieldProps {
-  label: string;
-  sublabel: string;
-  currentKey: string;
-  placeholder: string;
-  onSave: (key: string) => void;
-  onClear: () => void;
-}
-
-const KeyField = ({ label, sublabel, currentKey, placeholder, onSave, onClear }: KeyFieldProps) => {
+const KeyField = ({ label, description, currentKey, placeholder, onSave }: { label: string; description: string; currentKey: string; placeholder: string; onSave: (value: string) => void }) => {
   const [editing, setEditing] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-  const hasKey = Boolean(currentKey);
-
-  const handleSave = () => {
-    if (inputValue.trim()) {
-      onSave(inputValue.trim());
-      setInputValue("");
-      setEditing(false);
-    }
-  };
-
-  const handleClear = () => {
-    onClear();
-    setEditing(false);
-    setInputValue("");
-  };
-
+  const [value, setValue] = useState("");
+  const save = () => { if (!value.trim()) return; onSave(value.trim()); setValue(""); setEditing(false); };
   return (
-    <div style={{ marginBottom: "1rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-        <label style={{ fontSize: "0.9rem", fontWeight: 500 }}>
-          {label}
-          <span style={{ fontSize: "0.75rem", color: "var(--text-tertiary)", marginLeft: "0.5rem", fontWeight: 400 }}>
-            {sublabel}
-          </span>
-        </label>
-      </div>
-
-      {hasKey && !editing ? (
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0.5rem 0.75rem",
-          borderRadius: "6px",
-          border: "1px solid rgba(34, 197, 94, 0.3)",
-          background: "rgba(34, 197, 94, 0.06)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <MdCheckCircle style={{ color: "#22c55e", fontSize: "1.1rem" }} />
-            <span style={{ fontSize: "0.85rem", color: "#22c55e", fontWeight: 500 }}>
-              API Key Added
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: "0.25rem" }}>
-            <button
-              onClick={() => { setEditing(true); setInputValue(""); }}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                color: "var(--text-secondary)", padding: "0.2rem",
-                display: "flex", alignItems: "center",
-              }}
-              title="Change key"
-            >
-              <MdEdit size={16} />
-            </button>
-            <button
-              onClick={handleClear}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                color: "var(--status-bad)", padding: "0.2rem",
-                display: "flex", alignItems: "center", opacity: 0.7,
-              }}
-              title="Remove key"
-            >
-              <MdDelete size={16} />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder={placeholder}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
-            style={{
-              flex: 1,
-              padding: "0.5rem 0.75rem",
-              borderRadius: "6px",
-              border: "1px solid var(--border-subtle)",
-              background: "var(--bg-page)",
-              color: "var(--text-primary)",
-              outline: "none",
-              fontSize: "0.85rem",
-            }}
-            autoFocus={editing}
-          />
-          <button
-            onClick={handleSave}
-            disabled={!inputValue.trim()}
-            className="btn-primary"
-            style={{ padding: "0.5rem 0.75rem", fontSize: "0.8rem" }}
-          >
-            Save
-          </button>
-          {editing && (
-            <button
-              onClick={() => { setEditing(false); setInputValue(""); }}
-              className="btn-ghost"
-              style={{ padding: "0.5rem", fontSize: "0.8rem" }}
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-      )}
+    <div className="key-field">
+      <div><strong>{label}</strong><p>{description}</p></div>
+      {currentKey && !editing ? <div className="key-saved"><span><MdCheck /> Key saved on this device</span><div><button onClick={() => setEditing(true)} aria-label={`Change ${label} key`}><MdEdit /></button><button onClick={() => onSave("")} aria-label={`Remove ${label} key`}><MdDelete /></button></div></div> : <div className="key-entry"><input type="password" value={value} onChange={(event) => setValue(event.target.value)} onKeyDown={(event) => event.key === "Enter" && save()} placeholder={placeholder} autoFocus={editing} /><button onClick={save} disabled={!value.trim()}>Save</button>{editing && <button onClick={() => { setEditing(false); setValue(""); }}>Cancel</button>}</div>}
     </div>
   );
 };
 
-export const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
-  const {
-    userGeminiKey, setUserGeminiKey,
-    userOpenRouterKey, setUserOpenRouterKey,
-    userGroqKey, setUserGroqKey,
-  } = useLLM();
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0, left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.6)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 200,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: "var(--bg-panel)",
-          border: "1px solid var(--border-subtle)",
-          borderRadius: "12px",
-          width: "90%",
-          maxWidth: "450px",
-          padding: "1.5rem",
-          boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "1rem",
-        }}>
-          <h3 style={{ margin: 0, fontSize: "1.1rem" }}>AI Provider Settings</h3>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none", border: "none",
-              color: "var(--text-secondary)", cursor: "pointer", fontSize: "1.2rem",
-            }}
-          >
-            <MdClose />
-          </button>
-        </div>
-
-        <p style={{
-          fontSize: "0.82rem", color: "var(--text-secondary)",
-          marginBottom: "1.25rem", lineHeight: 1.5,
-          background: "var(--bg-page)", padding: "0.75rem",
-          borderRadius: "8px", border: "1px solid var(--border-subtle)",
-        }}>
-          AI features work out of the box. Add your own keys only if the built-in ones hit rate limits.
-          <br />
-          <span style={{ marginTop: "0.25rem", display: "inline-block" }}>
-            Priority: <strong>Groq → OpenRouter → Gemini</strong>
-          </span>
-        </p>
-
-        {/* Key Fields — localStorage only, no cloud storage */}
-        <KeyField
-          label="Groq"
-          sublabel="Fastest"
-          currentKey={userGroqKey}
-          placeholder="Enter Groq API key (gsk_...)"
-          onSave={setUserGroqKey}
-          onClear={() => setUserGroqKey("")}
-        />
-
-        <KeyField
-          label="OpenRouter"
-          sublabel="Flexible"
-          currentKey={userOpenRouterKey}
-          placeholder="Enter OpenRouter API key (sk-or-...)"
-          onSave={setUserOpenRouterKey}
-          onClear={() => setUserOpenRouterKey("")}
-        />
-
-        <KeyField
-          label="Gemini"
-          sublabel="Fallback"
-          currentKey={userGeminiKey}
-          placeholder="Enter Gemini API key (AIza...)"
-          onSave={setUserGeminiKey}
-          onClear={() => setUserGeminiKey("")}
-        />
-      </div>
-    </div>
-  );
+export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  const { user } = useAuth();
+  const { userGeminiKey, setUserGeminiKey, userOpenRouterKey, setUserOpenRouterKey, userGroqKey, setUserGroqKey } = useLLM();
+  if (!isOpen || !user) return null;
+  return <div className="modal-layer"><button className="modal-backdrop" onClick={onClose} aria-label="Close settings" /><section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <header><div><span>Local preferences</span><h2 id="settings-title">AI providers</h2></div><button onClick={onClose} aria-label="Close settings"><MdClose /></button></header>
+    <div className="settings-note"><MdKey /><p><strong>Your keys stay in this browser and are separated by account.</strong> They are only used when you generate a message from a pasted git diff.</p></div>
+    <div className="provider-list"><KeyField label="Groq" description="Fast primary provider" currentKey={userGroqKey} placeholder="gsk_…" onSave={setUserGroqKey} /><KeyField label="OpenRouter" description="Broad model fallback" currentKey={userOpenRouterKey} placeholder="sk-or-…" onSave={setUserOpenRouterKey} /><KeyField label="Gemini" description="Final fallback provider" currentKey={userGeminiKey} placeholder="AIza…" onSave={setUserGeminiKey} /></div>
+  </section></div>;
 };
