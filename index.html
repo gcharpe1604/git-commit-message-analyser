@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23d9ff43'/%3E%3Cpath d='M9 9h14v4H13v6h6v-2h-3v-4h7v10H9z' fill='%23171b0b'/%3E%3C/svg%3E" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" /></noscript>
     <meta
       http-equiv="Content-Security-Policy"
       content="
@@ -22,9 +26,9 @@
     />
 
     <!-- Primary SEO -->
-    <title>GitAnalyzer — Read the Story Behind the Commits</title>
-    <meta name="description" content="Analyze commit-message quality, repository habits, and Git history patterns with practical feedback for developers and teams." />
-    <meta name="keywords" content="git analyzer, github repository analysis, ai code analysis, commit quality, repository health, architecture analysis, developer insights, conventional commits" />
+    <title>GitAnalyzer: Analyze Git Commit Messages &amp; History</title>
+    <meta name="description" content="Analyze Git commit messages, spot repository-wide patterns, and improve your team's Git history with clear feedback and diff-grounded AI suggestions." />
+    <meta name="keywords" content="git analyzer, commit message analyzer, git commit quality, conventional commits, repository history analysis, AI commit message generator" />
     <meta name="author" content="GitAnalyzer AI" />
     <meta name="robots" content="index, follow" />
 
@@ -34,8 +38,8 @@
     <!-- Open Graph (Facebook, LinkedIn, Discord, Slack, etc.) -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://gitanalyzer-ai.netlify.app/" />
-    <meta property="og:title" content="GitAnalyzer — Read the Story Behind the Commits" />
-    <meta property="og:description" content="Analyze commit-message quality, repository habits, and Git history patterns with practical feedback." />
+    <meta property="og:title" content="GitAnalyzer: Analyze Git Commit Messages &amp; History" />
+    <meta property="og:description" content="Analyze Git commit messages, spot repository-wide patterns, and improve your team's Git history with clear feedback and diff-grounded AI suggestions." />
     <meta property="og:image" content="https://gitanalyzer-ai.netlify.app/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -43,8 +47,8 @@
 
     <!-- Twitter / X Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GitAnalyzer — Read the Story Behind the Commits" />
-    <meta name="twitter:description" content="Analyze commit-message quality, repository habits, and Git history patterns with practical feedback." />
+    <meta name="twitter:title" content="GitAnalyzer: Analyze Git Commit Messages &amp; History" />
+    <meta name="twitter:description" content="Analyze Git commit messages, spot repository-wide patterns, and improve your team's Git history with clear feedback and diff-grounded AI suggestions." />
     <meta name="twitter:image" content="https://gitanalyzer-ai.netlify.app/og-image.png" />
 
     <!-- Schema.org Structured Data -->
@@ -56,7 +60,13 @@
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Web",
       "url": "https://gitanalyzer-ai.netlify.app",
-      "description": "Analyze GitHub repositories with AI. Understand architecture, repository health, commit patterns, contributor activity, and codebase insights in seconds.",
+      "description": "Analyze Git commit messages and repository history with clear feedback, repository-wide patterns, and diff-grounded AI suggestions.",
+      "featureList": [
+        "Commit-message quality scoring",
+        "Repository-wide commit-pattern analysis",
+        "Diff-grounded AI commit-message suggestions",
+        "Commit-message workshop and PDF reports"
+      ],
       "offers": {
         "@type": "Offer",
         "price": "0",

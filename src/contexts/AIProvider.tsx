@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { AIContext, type AISuggestionUsage } from "./AIContext";
 import { useAuth } from "../hooks/useAuth";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { LLMService } from "../services/llmService";
+import type { LLMKeys } from "../services/llmService";
 
 interface PlatformResponse {
   message?: string;
@@ -71,7 +71,9 @@ export const AIProvider = ({ children }: { children: ReactNode }) => {
 
   const generateWithPersonalKeys = useCallback(async (diff: string, context?: string) => {
     if (!hasUserApiKey) return null;
-    const service = new LLMService({ geminiKey: userGeminiKey, openRouterKey: userOpenRouterKey, groqKey: userGroqKey });
+    const { LLMService } = await import("../services/llmService");
+    const keys: LLMKeys = { geminiKey: userGeminiKey, openRouterKey: userOpenRouterKey, groqKey: userGroqKey };
+    const service = new LLMService(keys);
     return service.generateCommitMessage(diff, context);
   }, [hasUserApiKey, userGeminiKey, userGroqKey, userOpenRouterKey]);
 

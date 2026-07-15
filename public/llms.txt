@@ -1,0 +1,20 @@
+# GitAnalyzer
+
+> GitAnalyzer evaluates GitHub commit messages and repository history, then provides clear, rule-based feedback and optional diff-grounded AI suggestions.
+
+## Main pages
+
+- [Home](https://gitanalyzer-ai.netlify.app/): Analyze a public GitHub user or repository.
+- [Commit workshop](https://gitanalyzer-ai.netlify.app/workshop): Draft, score, and improve a commit message using a supplied git diff.
+
+## Capabilities
+
+- Score commit-message clarity, structure, consistency, context, and hygiene.
+- Identify recurring repository-level issues and practical next actions.
+- Review individual commits and generate AI-improved messages from their GitHub diffs for signed-in users.
+- Create a shareable repository analysis URL and download a PDF report.
+
+## Notes
+
+- Public GitHub repositories and users can be analyzed without an account.
+- AI suggestions require sign-in and use a monthly per-account allowance.

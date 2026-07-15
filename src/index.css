@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap');
-
 :root {
   font-family: 'Manrope', system-ui, sans-serif;
   color: #edf0e8;
@@ -13,7 +11,7 @@
   --border-active: #465248;
   --text-primary: #edf0e8;
   --text-secondary: #a9b1a7;
-  --text-tertiary: #717a72;
+  --text-tertiary: #879087;
   --accent-primary: #d9ff43;
   --accent-text: #d9ff43;
   --accent-glow: rgba(217, 255, 67, .18);
@@ -41,7 +39,7 @@
   --border-active: #a7b2a4;
   --text-primary: #152018;
   --text-secondary: #4d5c51;
-  --text-tertiary: #748078;
+  --text-tertiary: #59655d;
   --accent-primary: #8fb20d;
   --accent-text: #587200;
   --accent-glow: rgba(143, 178, 13, .17);
@@ -405,16 +403,16 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .playground-intro > div:first-child { max-width: 700px; }
 .workshop-grid { display: grid; grid-template-columns: 1.05fr .95fr; min-height: 520px; border: 1px solid var(--border-active); }
 .workshop-editor { display: flex; min-width: 0; flex-direction: column; background: #0b0e0c; border-right: 1px solid var(--border-active); }
-.editor-topbar { display: flex; justify-content: space-between; padding: 12px 14px; color: #717a72; border-bottom: 1px solid #29302a; font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
+.editor-topbar { display: flex; justify-content: space-between; padding: 12px 14px; color: var(--text-tertiary); border-bottom: 1px solid #29302a; font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
 .workshop-editor textarea { width: 100%; min-height: 390px; flex: 1; padding: 22px; resize: none; color: #edf0e8; background: transparent; border: 0; outline: 0; font-family: 'IBM Plex Mono', monospace; font-size: 14px; line-height: 1.75; }
 .workshop-diff-context { color: #edf0e8; border-top: 1px solid #29302a; }
 .workshop-diff-context summary { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; color: #a5aea6; cursor: pointer; font-size: 9px; list-style: none; }
 .workshop-diff-context summary::-webkit-details-marker { display: none; }
 .workshop-diff-context summary span { display: flex; align-items: center; gap: 6px; color: #d9ff43; font-weight: 700; }
-.workshop-diff-context summary small { color: #717a72; }
+.workshop-diff-context summary small { color: var(--text-tertiary); }
 .workshop-diff-context textarea { min-height: 180px; max-height: 280px; padding: 16px 18px; border-top: 1px solid #202621; font-size: 11px; }
 .editor-actions { display: flex; justify-content: space-between; gap: 15px; align-items: center; padding: 12px 14px; border-top: 1px solid #29302a; }
-.editor-actions > span { color: #717a72; font-size: 9px; }
+.editor-actions > span { color: var(--text-tertiary); font-size: 9px; }
 .editor-actions > div { display: flex; gap: 7px; }
 .editor-actions button, .workshop-suggestion button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 6px 10px; color: #edf0e8; background: transparent; border: 1px solid #29302a; font-size: 10px; font-weight: 700; cursor: pointer; }
 .editor-actions button.primary { color: #171b0b; background: #d9ff43; border-color: #d9ff43; }
