@@ -251,7 +251,7 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .empty-state p { color: var(--text-secondary); }
 .empty-index { color: var(--accent-text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
 
-.analysis-page { max-width: 1140px; margin: 0 auto; }
+.analysis-page { max-width: 1140px; min-width: 0; margin: 0 auto; }
 .analysis-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 38px; padding-bottom: 14px; border-bottom: 1px solid var(--border-subtle); }
 .analysis-actions, .analysis-tabs { display: flex; align-items: center; gap: 8px; }
 .analysis-tabs { padding: 3px; background: var(--bg-panel); border: 1px solid var(--border-subtle); }
@@ -281,9 +281,10 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .report-download strong { font-size: 10px; }
 .report-download small { margin-top: 2px; color: var(--text-tertiary); font-size: 8px; }
 .report-download > svg { color: var(--text-tertiary); }
-.report-stack { display: grid; gap: 18px; }
-.report-hero { display: flex; justify-content: space-between; gap: 30px; align-items: flex-end; padding: 18px 0 26px; }
-.report-heading a { display: flex; align-items: flex-start; gap: 8px; color: var(--text-primary); text-decoration: none; }
+.report-stack { display: grid; min-width: 0; gap: 18px; }
+.report-hero { display: flex; min-width: 0; justify-content: space-between; gap: 30px; align-items: flex-end; padding: 18px 0 26px; }
+.report-heading { min-width: 0; }
+.report-heading a { display: flex; min-width: 0; align-items: flex-start; gap: 8px; color: var(--text-primary); text-decoration: none; }
 .report-heading h1 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: 1; letter-spacing: -.065em; }
 .report-heading > p:last-child { margin: 11px 0 0; color: var(--text-tertiary); font-size: 11px; }
 .copy-summary { display: flex; align-items: center; gap: 7px; padding: 8px 10px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border-subtle); font-size: 11px; cursor: pointer; }
@@ -550,6 +551,12 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
   .score-hero { border-right: 0; border-bottom: 1px solid var(--border-active); }
   .report-grid { grid-template-columns: 1fr; }
   .actions-card { grid-column: auto; }
+  .analysis-toolbar { flex-direction: column; align-items: stretch; gap: 14px; }
+  .analysis-actions { width: 100%; flex-direction: column; align-items: stretch; }
+  .analysis-tabs { width: 100%; }
+  .analysis-tabs > * { flex: 1; text-align: center; }
+  .route-back { width: fit-content; min-width: 138px; }
+  .report-download { width: 100%; min-width: 0; }
 }
 
 @media (max-width: 700px) {
@@ -563,7 +570,7 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
   .desktop-only { display: none !important; }
   .mobile-menu-btn { display: block; }
   .landing-hero { min-height: 0; gap: 42px; margin-bottom: 62px; }
-  .landing-hero h1 { font-size: clamp(48px, 15vw, 70px); }
+  .landing-hero h1 { font-size: clamp(42px, 12vw, 56px); }
   .hero-lede { font-size: 15px; }
   .analyzer-entry { margin-bottom: 80px; padding: 20px; }
   #analyzer { margin-bottom: 80px; }
@@ -585,10 +592,8 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
   .landing-footer { grid-template-columns: 1fr auto; }
   .landing-footer p { display: none; }
   .page-intro h1 { font-size: 44px; }
-  .analysis-toolbar { align-items: flex-start; }
-  .analysis-actions { flex-direction: column; align-items: flex-start; }
-  .report-download { min-width: min(100%, 276px); }
-  .report-hero, .commit-list-header, .playground-intro { display: grid; }
+  .report-hero, .commit-list-header, .playground-intro { display: grid; gap: 14px; }
+  .report-heading h1 { overflow-wrap: anywhere; font-size: clamp(34px, 11vw, 46px); }
   .score-context { grid-template-columns: 1fr; }
   .context-item + .context-item { border-left: 0; border-top: 1px solid var(--border-active); }
   .insight-columns, .achievement-strip, .feedback-grid { grid-template-columns: 1fr; }
