@@ -1,100 +1,67 @@
-
-import { useState, useCallback } from 'react';
-import { LLMService } from '../services/llmService';
-import { useLocalStorage } from './useLocalStorage';
-import { useAuth } from './useAuth';
+import { useCallback, useState } from "react";
+import { useAuth } from "./useAuth";
+import { useLocalStorage } from "./useLocalStorage";
+import { LLMService } from "../services/llmService";
 
 export const useLLM = () => {
-  // User-provided keys — stored in localStorage, default to EMPTY.
-  // These are keys the user personally adds via Settings.
-  const [userGeminiKey, setUserGeminiKey] = useLocalStorage<string>('user_gemini_api_key', '');
-  const [userOpenRouterKey, setUserOpenRouterKey] = useLocalStorage<string>('user_openrouter_api_key', '');
-  const [userGroqKey, setUserGroqKey] = useLocalStorage<string>('user_groq_api_key', '');
-
   const { user } = useAuth();
+  const [accountKeys, setAccountKeys] = useLocalStorage<Record<string, { gemini: string; openRouter: string; groq: string }>>("account_ai_provider_keys", {});
+  const userKeys = user ? accountKeys[user.id] : undefined;
+  const userGeminiKey = userKeys?.gemini ?? "";
+  const userOpenRouterKey = userKeys?.openRouter ?? "";
+  const userGroqKey = userKeys?.groq ?? "";
+  const updateKey = (provider: "gemini" | "openRouter" | "groq", value: string) => {
+    if (!user) return;
+    setAccountKeys((current) => {
+      const existing = current[user.id] ?? { gemini: "", openRouter: "", groq: "" };
+      return { ...current, [user.id]: { ...existing, [provider]: value } };
+    });
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Effective keys: user key takes priority, then fall back to .env built-in keys
-  const effectiveGeminiKey = userGeminiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
-  const effectiveOpenRouterKey = userOpenRouterKey || import.meta.env.VITE_OPENROUTER_API_KEY || '';
-  const effectiveGroqKey = userGroqKey || import.meta.env.VITE_GROQ_API_KEY || '';
+  const hasApiKey = Boolean(user && (userGeminiKey || userOpenRouterKey || userGroqKey));
 
   const generateMessage = useCallback(async (diff: string, context?: string) => {
     if (!user) {
-      setError("Please login to use AI features.");
+      setError("Sign in before using AI generation.");
       return null;
     }
-
-    if (!effectiveGeminiKey && !effectiveOpenRouterKey && !effectiveGroqKey) {
-      setError("No API Keys found. Please add at least one AI provider key in settings.");
+    if (!diff.trim()) {
+      setError("Paste a git diff before generating a commit message.");
       return null;
     }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const service = new LLMService({ 
-        geminiKey: effectiveGeminiKey, 
-        openRouterKey: effectiveOpenRouterKey, 
-        groqKey: effectiveGroqKey 
-      });
-      const message = await service.generateCommitMessage(diff, context);
-      return message;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate message");
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveGeminiKey, effectiveOpenRouterKey, effectiveGroqKey, user]);
-
-  const improveMessage = useCallback(async (currentMessage: string) => {
-    if (!user) {
-      setError("Please login to use AI features.");
-      return null;
-    }
-
-    if (!effectiveGeminiKey && !effectiveOpenRouterKey && !effectiveGroqKey) {
-      setError("No API Keys found. Please add at least one AI provider key in settings.");
+    if (!hasApiKey) {
+      setError("Add at least one AI provider key in Settings.");
       return null;
     }
 
     setLoading(true);
     setError(null);
-
     try {
-      const service = new LLMService({ 
-        geminiKey: effectiveGeminiKey, 
-        openRouterKey: effectiveOpenRouterKey, 
-        groqKey: effectiveGroqKey 
+      const service = new LLMService({
+        geminiKey: userGeminiKey,
+        openRouterKey: userOpenRouterKey,
+        groqKey: userGroqKey,
       });
-      const message = await service.improveCommitMessage(currentMessage);
-      return message;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to improve message");
+      return await service.generateCommitMessage(diff, context);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to generate a commit message");
       return null;
     } finally {
       setLoading(false);
     }
-  }, [effectiveGeminiKey, effectiveOpenRouterKey, effectiveGroqKey, user]);
-
-  const hasApiKey = Boolean(effectiveGeminiKey || effectiveOpenRouterKey || effectiveGroqKey);
+  }, [hasApiKey, user, userGeminiKey, userGroqKey, userOpenRouterKey]);
 
   return {
-    // User-provided keys (for Settings UI to check if user personally added a key)
-    userGeminiKey, setUserGeminiKey: setUserGeminiKey,
-    userOpenRouterKey, setUserOpenRouterKey: setUserOpenRouterKey,
-    userGroqKey, setUserGroqKey: setUserGroqKey,
-    // Effective keys (for API calls — includes .env fallback)
-    geminiKey: effectiveGeminiKey,
-    openRouterKey: effectiveOpenRouterKey,
-    groqKey: effectiveGroqKey,
+    userGeminiKey,
+    setUserGeminiKey: (value: string) => updateKey("gemini", value),
+    userOpenRouterKey,
+    setUserOpenRouterKey: (value: string) => updateKey("openRouter", value),
+    userGroqKey,
+    setUserGroqKey: (value: string) => updateKey("groq", value),
     hasApiKey,
     generateMessage,
-    improveMessage,
     loading,
-    error
+    error,
   };
 };

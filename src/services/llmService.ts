@@ -170,23 +170,4 @@ Generate a single commit message.
     }
   }
 
-  async improveCommitMessage(currentMessage: string): Promise<string> {
-    const prompt = `
-${SYSTEM_PROMPT}
-
-The user wrote this commit message:
-"${currentMessage}"
-
-Analyze it and rewrite it to strictly follow Conventional Commits and be more professional.
-If it is already perfect, return it as is.
-Return ONLY the rewritten message.
-`;
-
-    try {
-      return await this.generateWithFallback(prompt);
-    } catch (error) {
-      console.error("LLM Improvement Error:", error);
-      throw new Error("Failed to improve commit message. Please check your API keys.");
-    }
-  }
 }
