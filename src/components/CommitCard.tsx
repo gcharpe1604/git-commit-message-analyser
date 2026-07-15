@@ -14,7 +14,7 @@ export const CommitCard = memo(({ repoName, commit, index }: { repoName: string;
   const [improvedMessage, setImprovedMessage] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { generateMessage, loading: aiLoading, hasApiKey, error: generationError } = useLLM();
+  const { generateMessage, loading: aiLoading, hasApiKey, usage, error: generationError } = useLLM();
   const analysis = commit.analysis;
   const score = analysis?.score ?? 0;
   const tone = score >= 8 ? "good" : score >= 6 ? "warning" : "bad";
@@ -35,7 +35,7 @@ export const CommitCard = memo(({ repoName, commit, index }: { repoName: string;
   };
   const improveWithAi = async () => {
     if (!user) { setAuthOpen(true); return; }
-    if (!hasApiKey) { setAiError("Add a Groq, OpenRouter, or Gemini key from your account menu first."); return; }
+    if (!hasApiKey) { setAiError(`You have used ${usage?.used ?? 15}/${usage?.limit ?? 15} free suggestions. Add a personal provider key to continue.`); return; }
     setAiError(null);
     try {
       const diff = await fetchCommitDiff(repoName, commit.sha);

@@ -14,7 +14,7 @@ export const FeatureUnlockNotice = ({ context }: { context: "home" | "analysis" 
       <span className="feature-unlock-icon"><MdAutoAwesome /></span>
       <div>
         <strong>{isAnalysis ? "Your rule-based analysis is ready." : "Analysis works without an account."}</strong>
-        <p>{isAnalysis ? "Sign in to sync this report and unlock AI-improved commit messages generated only from the real git diff." : "Sign in when you want synced history, private provider keys, and AI suggestions grounded in your git diff."}</p>
+        <p>{isAnalysis ? "Sign in to sync this report and unlock 15 monthly AI-improved messages generated only from the real git diff." : "Sign in for synced history and 15 diff-grounded AI suggestions every month. Add personal provider keys only when you need more."}</p>
       </div>
       <button type="button" onClick={() => setAuthOpen(true)}>Sign in to unlock <MdArrowForward /></button>
     </aside>

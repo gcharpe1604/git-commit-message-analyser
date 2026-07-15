@@ -6,9 +6,9 @@ import { useAuth } from "../hooks/useAuth";
 type AuthVariant = "default" | "commitReview" | "featureAccess";
 
 const modalCopy: Record<AuthVariant, { kicker: string; title: string; body: string }> = {
-  default: { kicker: "Your account", title: "Sign in or create an account.", body: "Sign in to sync analysis history and manage your AI provider keys. Core rule-based analysis remains available without an account." },
+  default: { kicker: "Your account", title: "Sign in or create an account.", body: "Sign in to sync analysis history and receive 15 diff-grounded AI suggestions every month. Core rule-based analysis remains available without an account." },
   commitReview: { kicker: "Unlock the next step", title: "See a stronger version of this commit.", body: "Sign up to generate an AI-improved commit message after providing the actual git diff. You will also unlock synced analysis history." },
-  featureAccess: { kicker: "History and AI", title: "Sign in to unlock account features.", body: "History and AI features require an account. Sign in or sign up to sync reports, manage provider keys, and generate improved messages from the actual git diff." },
+  featureAccess: { kicker: "History and AI", title: "Sign in to unlock account features.", body: "Sign in or sign up to sync reports and receive 15 monthly AI suggestions generated from the actual git diff. Personal provider keys keep you going after the allowance." },
 };
 
 export const AuthModal = ({ isOpen, onClose, variant = "default" }: { isOpen: boolean; onClose: () => void; variant?: AuthVariant }) => {

@@ -3,6 +3,7 @@ import { CommitList } from "../CommitList";
 import { FeatureUnlockNotice } from "../FeatureUnlockNotice";
 import { Loader } from "../Loader";
 import { ReportDownloadButton } from "../ReportDownloadButton";
+import { RouteBackButton } from "../RouteBackButton";
 import { SummarySection } from "../SummarySection";
 
 interface AnalysisPageProps {
@@ -19,7 +20,7 @@ export const AnalysisPage = ({ stats, commits, loading, fetchingMore, onBack, on
   if (loading || !stats) return <div className="route-loading"><Loader size={1.5} /><strong>Reading repository history</strong><span>Scoring messages and identifying patterns...</span></div>;
   return <div className="analysis-page animate-in">
     <div className="analysis-toolbar">
-      <div className="analysis-actions"><button onClick={onBack} className="btn-ghost route-back">← Back</button><ReportDownloadButton stats={stats} commits={commits} /></div>
+      <div className="analysis-actions"><RouteBackButton onClick={onBack} destination="previous view" /><ReportDownloadButton stats={stats} commits={commits} /></div>
       <div className="analysis-tabs"><span className="active">Analysis</span><button onClick={onWorkshop}>Commit workshop</button></div>
     </div>
     <SummarySection stats={stats} />

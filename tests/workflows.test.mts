@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { LLMService } from "../src/services/llmService.ts";
+import { generatePlatformCommitMessage } from "../src/services/platformAI.ts";
 import {
   buildAnalysisPath,
   buildRepositoryAnalysisPath,
@@ -51,4 +52,31 @@ test("AI generation falls back from Groq to OpenRouter and includes the diff", a
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("platform allowance generation preserves provider order through Gemini", async () => {
+  const requests: Array<{ url: string; body: string }> = [];
+  const fetcher = async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    requests.push({ url, body: String(init?.body ?? "") });
+    if (url.includes("groq.com")) return new Response("provider unavailable", { status: 503 });
+    if (url.includes("openrouter.ai")) return new Response("provider unavailable", { status: 429 });
+    return Response.json({ candidates: [{ content: { parts: [{ text: "```commit\nfeat(quota): add monthly AI allowance\n```" }] } }] });
+  };
+
+  const result = await generatePlatformCommitMessage(
+    "+ enforce fifteen suggestions per month",
+    "signed-in account allowance",
+    { groq: "groq-test", openRouter: "openrouter-test", gemini: "gemini-test" },
+    fetcher as typeof fetch,
+  );
+
+  assert.equal(result.provider, "gemini");
+  assert.equal(result.message, "feat(quota): add monthly AI allowance");
+  assert.deepEqual(requests.map(({ url }) => new URL(url).hostname), [
+    "api.groq.com",
+    "openrouter.ai",
+    "generativelanguage.googleapis.com",
+  ]);
+  for (const request of requests) assert.match(request.body, /fifteen suggestions per month/);
 });

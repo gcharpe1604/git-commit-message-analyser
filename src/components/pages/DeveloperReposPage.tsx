@@ -1,7 +1,8 @@
 import type { Repository } from "../../types";
 import { UserRepoList } from "../UserRepoList";
+import { RouteBackButton } from "../RouteBackButton";
 
 export const DeveloperReposPage = ({ username, repos, loading, onBack, onSelectRepo }: { username: string; repos: Repository[]; loading: boolean; onBack: () => void; onSelectRepo: (url: string) => void }) => <div className="animate-in">
-  <button onClick={onBack} className="btn-ghost route-back">← Back to analyzer</button>
+  <RouteBackButton onClick={onBack} destination="analyzer" />
   <UserRepoList repos={repos} onSelectRepo={onSelectRepo} username={username} isLoading={loading} />
 </div>;

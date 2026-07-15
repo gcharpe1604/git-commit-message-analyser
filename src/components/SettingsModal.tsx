@@ -17,11 +17,11 @@ const KeyField = ({ label, description, currentKey, placeholder, onSave }: { lab
 
 export const SettingsModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { user } = useAuth();
-  const { userGeminiKey, setUserGeminiKey, userOpenRouterKey, setUserOpenRouterKey, userGroqKey, setUserGroqKey } = useLLM();
+  const { userGeminiKey, setUserGeminiKey, userOpenRouterKey, setUserOpenRouterKey, userGroqKey, setUserGroqKey, usage } = useLLM();
   if (!isOpen || !user) return null;
   return <div className="modal-layer"><button className="modal-backdrop" onClick={onClose} aria-label="Close settings" /><section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <header><div><span>Local preferences</span><h2 id="settings-title">AI providers</h2></div><button onClick={onClose} aria-label="Close settings"><MdClose /></button></header>
-    <div className="settings-note"><MdKey /><p><strong>Your keys stay in this browser and are separated by account.</strong> They are only used when you generate a message from a pasted git diff.</p></div>
+    <div className="settings-note"><MdKey /><p><strong>{usage ? `${usage.remaining} of ${usage.limit} free suggestions remain this month.` : "Every account starts with a monthly AI allowance."}</strong> Personal keys stay in this browser and are used automatically after the free allowance is finished.</p></div>
     <div className="provider-list"><KeyField label="Groq" description="Fast primary provider" currentKey={userGroqKey} placeholder="gsk_…" onSave={setUserGroqKey} /><KeyField label="OpenRouter" description="Broad model fallback" currentKey={userOpenRouterKey} placeholder="sk-or-…" onSave={setUserOpenRouterKey} /><KeyField label="Gemini" description="Final fallback provider" currentKey={userGeminiKey} placeholder="AIza…" onSave={setUserGeminiKey} /></div>
   </section></div>;
 };

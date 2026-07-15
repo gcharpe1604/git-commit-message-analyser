@@ -123,6 +123,14 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .account-menu > button small { margin-top: 1px; color: var(--text-tertiary); font-size: 8px; }
 .account-menu .account-signout { display: flex !important; justify-content: flex-start !important; color: var(--status-bad) !important; border-top: 1px solid var(--border-subtle) !important; }
 .account-menu .account-signin { display: flex !important; justify-content: center !important; color: #171b0b !important; background: var(--accent-primary) !important; }
+.account-ai-usage { display: grid; gap: 7px; margin: 5px 2px 7px; padding: 11px 10px; background: var(--bg-panel); border: 1px solid var(--border-subtle); }
+.account-ai-usage > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.account-ai-usage span { display: inline-flex; align-items: center; gap: 5px; color: var(--text-secondary); font-size: 9px; font-weight: 650; }
+.account-ai-usage span svg { color: var(--accent-text); font-size: 13px; }
+.account-ai-usage strong { color: var(--text-primary); font-family: 'IBM Plex Mono', monospace; font-size: 9px; white-space: nowrap; }
+.account-ai-usage > small { color: var(--text-tertiary); font-size: 8px; line-height: 1.45; }
+.account-usage-track { height: 3px; overflow: hidden; background: var(--border-subtle); }
+.account-usage-track i { display: block; height: 100%; background: var(--accent-primary); transition: width .25s ease; }
 .navbar-mobile-toggle { display: none; width: 39px; height: 39px; margin-left: auto; place-items: center; color: var(--text-primary); background: transparent; border: 1px solid var(--border-subtle); font-size: 22px; cursor: pointer; }
 .theme-toggle { display: grid; width: 58px; height: 38px; grid-template-columns: 1fr 1fr; align-items: center; gap: 2px; padding: 3px; color: var(--text-tertiary); background: var(--bg-panel); border: 1px solid var(--border-subtle); cursor: pointer; }
 .theme-toggle span { display: grid; height: 30px; place-items: center; border-radius: 3px; }
@@ -245,7 +253,16 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .analysis-tabs { padding: 3px; background: var(--bg-panel); border: 1px solid var(--border-subtle); }
 .analysis-tabs button, .analysis-tabs > span { padding: 7px 14px; color: var(--text-tertiary); background: transparent; border: 0; border-radius: 0; box-shadow: none; font-size: 12px; cursor: pointer; }
 .analysis-tabs > span.active { color: var(--text-primary); background: var(--bg-elevated); cursor: default; }
-.route-back { padding-left: 0; }
+.route-back { display: inline-flex; align-items: center; gap: 10px; min-width: 138px; padding: 5px 12px 5px 5px; color: var(--text-primary); background: color-mix(in srgb, var(--bg-panel) 86%, transparent); border: 1px solid var(--border-subtle); cursor: pointer; transition: color .18s ease, border-color .18s ease, background .18s ease, transform .18s ease; }
+.route-back:hover { color: var(--accent-text); background: var(--bg-panel-hover); border-color: var(--border-active); transform: translateX(-2px); }
+.route-back:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 3px; }
+.route-back-icon { display: grid; place-items: center; width: 30px; height: 30px; color: #151a08; background: var(--accent-primary); }
+.route-back-icon svg { font-size: 17px; transition: transform .18s ease; }
+.route-back:hover .route-back-icon svg { transform: translateX(-2px); }
+.route-back-copy { display: grid; gap: 1px; text-align: left; }
+.route-back-copy strong { font-size: 10px; font-weight: 700; line-height: 1.1; }
+.route-back-copy small { color: var(--text-tertiary); font-family: 'IBM Plex Mono', monospace; font-size: 7px; letter-spacing: .04em; line-height: 1.2; text-transform: uppercase; }
+.animate-in > .route-back { margin-bottom: 28px; }
 .route-loading { display: grid; min-height: 58vh; place-items: center; align-content: center; gap: 10px; color: var(--text-secondary); text-align: center; }
 .route-loading strong { margin-top: 9px; color: var(--text-primary); font-size: 20px; }
 .route-loading span { font-size: 11px; }
@@ -502,6 +519,7 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .mobile-drawer > header button { display: grid; width: 32px; height: 32px; place-items: center; color: var(--text-secondary); background: transparent; border: 1px solid var(--border-subtle); }
 .mobile-account { display: grid; gap: 3px; margin: 16px 20px 0; padding: 13px; background: var(--bg-panel); }
 .mobile-account small { color: var(--text-tertiary); }
+.mobile-account span { margin-top: 7px; color: var(--accent-text); font-family: 'IBM Plex Mono', monospace; font-size: 9px; }
 .mobile-drawer nav { display: grid; gap: 2px; padding: 18px; }
 .mobile-drawer nav > button { display: grid !important; width: 100% !important; grid-template-columns: 25px 1fr !important; gap: 10px !important; align-items: center !important; padding: 13px 9px !important; color: var(--text-primary) !important; text-align: left !important; background: transparent !important; border: 0 !important; border-bottom: 1px solid var(--border-subtle) !important; border-radius: 0 !important; cursor: pointer; }
 .mobile-drawer nav > button > svg { color: var(--accent-text); }

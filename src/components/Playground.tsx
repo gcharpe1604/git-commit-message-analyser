@@ -25,7 +25,7 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
   const [showWriteDiff, setShowWriteDiff] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const { generateMessage, loading, hasApiKey, error: generationError } = useLLM();
+  const { generateMessage, loading, hasApiKey, usage, error: generationError } = useLLM();
   const analyze = useMemo(() => debounce((value: string) => setResult(value.trim() ? analyzeCommit(value) : null), CONSTANTS.ANIMATION.DEBOUNCE_DELAY), []);
 
   useEffect(() => analyze(message), [message, analyze]);
@@ -38,7 +38,7 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
     setActionError(null);
     setAiNotice(null);
     if (!user) { setAuthOpen(true); return; }
-    if (!hasApiKey) { setActionError("Add a Groq, OpenRouter, or Gemini key from your account menu before using AI."); return; }
+    if (!hasApiKey) { setActionError(`You have used ${usage?.used ?? 15}/${usage?.limit ?? 15} free suggestions. Add a personal provider key to continue.`); return; }
     if (action === "improve" && !message.trim()) { setActionError("Write a commit message before asking AI to improve it."); return; }
     if (!diff.trim()) {
       setShowWriteDiff(true);
@@ -81,7 +81,7 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
             </details>
           </> : <textarea value={diff} onChange={(event) => setDiff(event.target.value)} placeholder={"diff --git a/src/file.ts b/src/file.ts\n+ describe your change here"} autoFocus />}
           <div className="editor-actions">
-            <span>{!user ? "Sign in to unlock AI features" : hasApiKey ? "AI ready · Groq → OpenRouter → Gemini" : "Add an AI provider key from your account menu"}</span>
+            <span>{!user ? "Sign in to unlock AI features" : usage?.remaining ? `${usage.remaining} free AI suggestions remaining` : hasApiKey ? "Personal provider ready · Groq → OpenRouter → Gemini" : "Monthly allowance used · add a personal provider key"}</span>
             {mode === "write" ? <div>
               {result && <button type="button" onClick={save}><MdSave /> Save draft</button>}
               <button type="button" className="primary" onClick={() => runAi("improve")} disabled={loading}><MdAutoAwesome /> {loading ? "Improving..." : "Improve with AI"}</button>

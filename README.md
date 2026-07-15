@@ -52,7 +52,7 @@ Unlike generic linters, GitAnalyzer works at the repository level. It looks at p
 
 - **Shareable routes** — The analyzer, developer repository index, repository reports, and commit workshop have stable browser URLs
 
-- **Diff-grounded AI generation (logged-in users only)** — AI generation is available only after a user signs in, adds a provider key, and supplies a git diff. Supported providers: Gemini, OpenRouter, and Groq
+- **Diff-grounded AI generation (logged-in users only)** — Every signed-in account receives 15 platform-funded suggestions per month. After that, users can continue with personal Groq, OpenRouter, or Gemini keys stored in their browser
 
 - **Persistent analysis history** — Signed-in users have repository analyses saved to Supabase. Guest analyses are not added to history
 
@@ -69,7 +69,7 @@ Unlike generic linters, GitAnalyzer works at the repository level. It looks at p
 3. **Messages are analyzed** — Each commit message is scored individually using the rule-based engine
 4. **Insights are computed** — Sub-scores, developer type, top issues, and suggestions are derived from aggregate patterns
 5. **Dashboard renders** — Results are displayed across score cards, charts, and feedback sections
-6. **AI generation** (logged-in only) — Users paste a git diff in the Playground before requesting a generated commit message
+6. **AI generation** (logged-in only) — Users paste a git diff before requesting one of 15 monthly suggestions; personal provider keys take over after the allowance is used
 7. **History is saved** — Logged-in users have the analysis persisted to their Supabase profile for future reference
 
 ---
@@ -194,7 +194,7 @@ src/
 
 - Node.js ≥ 18
 - A [Supabase](https://supabase.com) project (for auth and history)
-- Optional: an API key for Gemini, OpenRouter, or Groq, added after sign-in
+- Optional: a personal Gemini, OpenRouter, or Groq key after the 15 monthly platform suggestions are used
 
 ### Steps
 
@@ -224,9 +224,16 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 # GitHub token (optional — increases rate limit from 60 to 5000 req/hr)
 VITE_GITHUB_TOKEN=your_github_token
 
+# Netlify Functions only — mark these as secret and include Functions scope
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SECRET_KEY=your-supabase-secret-or-service-role-key
+GROQ_API_KEY=your-groq-key
+OPENROUTER_API_KEY=your-openrouter-key
+GEMINI_API_KEY=your-gemini-key
+
 ```
 
-> The app works without AI keys — scoring and insights are fully rule-based. Provider keys are added from the signed-in account menu and remain in that browser, separated by account.
+> Never use a `VITE_` prefix for Groq, OpenRouter, Gemini, or Supabase secret keys. Vite variables are browser-facing. Configure the server-only names above in Netlify and redeploy. Personal provider keys are added from the signed-in account menu and remain separated by account in that browser.
 
 ---
 
@@ -238,7 +245,7 @@ Signed-in analysis history is stored in the Supabase `public.analyses` table. Fo
 supabase db push
 ```
 
-The migration enables row-level security so each authenticated user can only read and change their own saved analyses.
+The migrations secure per-user analysis history and maintain the private, atomic monthly AI allowance used by the Netlify Function.
 
 ---
 
