@@ -1,10 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdCloudDone, MdErrorOutline, MdSearch } from "react-icons/md";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MdClose, MdCloudDone, MdErrorOutline, MdExpandMore, MdSearch } from "react-icons/md";
 import { fetchUserAnalyses } from "../services/analysisService";
 import { useAuth } from "../hooks/useAuth";
 import type { RepoStats } from "../types";
 
 type SortOption = "date-desc" | "date-asc" | "score-desc" | "score-asc";
+
+const sortOptions: Array<{ value: SortOption; label: string }> = [
+  { value: "date-desc", label: "Newest first" },
+  { value: "date-asc", label: "Oldest first" },
+  { value: "score-desc", label: "Highest score" },
+  { value: "score-asc", label: "Lowest score" },
+];
+
+const HistorySortSelect = ({ value, onChange }: { value: SortOption; onChange: (value: SortOption) => void }) => {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const selected = sortOptions.find((option) => option.value === value) ?? sortOptions[0];
+
+  useEffect(() => {
+    const close = (event: MouseEvent) => { if (!menuRef.current?.contains(event.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  return <div className="history-sort" ref={menuRef}>
+    <button type="button" aria-haspopup="listbox" aria-expanded={open} aria-label="Sort history" onClick={() => setOpen((current) => !current)} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false); }}>
+      <span>{selected.label}</span><MdExpandMore />
+    </button>
+    {open && <div className="history-sort-menu" role="listbox" aria-label="Sort history">
+      {sortOptions.map((option) => <button key={option.value} type="button" role="option" aria-selected={option.value === value} className={option.value === value ? "selected" : ""} onClick={() => { onChange(option.value); setOpen(false); }}>{option.label}</button>)}
+    </div>}
+  </div>;
+};
 
 export const HistorySidebar = ({ isOpen, onClose, onSelectRepo }: { isOpen: boolean; onClose: () => void; onSelectRepo: (url: string) => void }) => {
   const { user } = useAuth();
@@ -56,7 +84,7 @@ export const HistorySidebar = ({ isOpen, onClose, onSelectRepo }: { isOpen: bool
       <header className="drawer-header"><div><span>Saved analyses</span><h2 id="history-title">History</h2></div><button onClick={onClose} aria-label="Close history"><MdClose /></button></header>
       <div className="history-controls">
         <label><MdSearch /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a repository" /></label>
-        <select value={sort} onChange={(event) => setSort(event.target.value as SortOption)} aria-label="Sort history"><option value="date-desc">Newest first</option><option value="date-asc">Oldest first</option><option value="score-desc">Highest score</option><option value="score-asc">Lowest score</option></select>
+        <HistorySortSelect value={sort} onChange={setSort} />
         <div className="history-filters">{(["all", "good", "warning", "bad"] as const).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}</div>
       </div>
       <div className="history-list">
