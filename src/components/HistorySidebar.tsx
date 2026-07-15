@@ -1,376 +1,61 @@
-import { useEffect, useState, useMemo } from "react";
-import { Empty } from "antd";
-import {
-  MdSearch,
-  MdCloud,
-} from "react-icons/md";
-import { getHistory } from "../services/storageService";
-import type { RepoStats } from "../types";
-import { useAuth } from "../hooks/useAuth";
+import { useEffect, useMemo, useState } from "react";
+import { MdClose, MdCloudDone, MdSearch } from "react-icons/md";
 import { fetchUserAnalyses } from "../services/analysisService";
+import { useAuth } from "../hooks/useAuth";
+import type { RepoStats } from "../types";
 
-interface HistorySidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelectRepo: (url: string) => void;
-}
+type SortOption = "date-desc" | "date-asc" | "score-desc" | "score-asc";
 
-type SortOption =
-  | "date-desc"
-  | "date-asc"
-  | "score-desc"
-  | "score-asc"
-  | "name-asc";
-
-export const HistorySidebar = ({
-  isOpen,
-  onClose,
-  onSelectRepo,
-}: HistorySidebarProps) => {
+export const HistorySidebar = ({ isOpen, onClose, onSelectRepo }: { isOpen: boolean; onClose: () => void; onSelectRepo: (url: string) => void }) => {
   const { user } = useAuth();
   const [history, setHistory] = useState<RepoStats[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date-desc");
-  const [filterScore, setFilterScore] = useState<
-    "all" | "good" | "warning" | "bad"
-  >("all");
-  const [isCloudSynced, setIsCloudSynced] = useState(false);
+  const [filter, setFilter] = useState<"all" | "good" | "warning" | "bad">("all");
+  const [cloudSynced, setCloudSynced] = useState(false);
 
   useEffect(() => {
-    const localHistory = getHistory();
-
-    if (user) {
-      fetchUserAnalyses(user.id).then((cloudData) => {
-        setIsCloudSynced(true);
-        if (cloudData.length === 0) {
-          setHistory(localHistory);
-          return;
-        }
-        const cloudMap = new Map<string, RepoStats>();
-        cloudData.forEach((r) => {
-          cloudMap.set(r.repo_name, {
-            repoName: r.repo_name,
-            averageScore: r.avg_score,
-            totalCommits: r.total_commits,
-            goodCommits: 0,
-            warningCommits: 0,
-            badCommits: 0,
-            lastAnalyzed: r.created_at || new Date().toISOString(),
-          });
-        });
-        localHistory.forEach((local) => {
-          cloudMap.set(local.repoName, local);
-        });
-        setHistory(Array.from(cloudMap.values()));
-      }).catch(() => {
-        setIsCloudSynced(false);
-        setHistory(localHistory);
-      });
-    } else {
-      setTimeout(() => {
-        setIsCloudSynced(false);
-        setHistory(localHistory);
-      }, 0);
-    }
+    if (!isOpen || !user) return;
+    let active = true;
+    fetchUserAnalyses().then((cloud) => {
+      if (!active) return;
+      setHistory(cloud.map((item) => ({
+        repoName: item.repo_name,
+        averageScore: item.avg_score,
+        totalCommits: item.total_commits,
+        goodCommits: 0,
+        warningCommits: 0,
+        badCommits: 0,
+        lastAnalyzed: item.created_at || new Date().toISOString(),
+      })));
+      setCloudSynced(true);
+    }).catch(() => { if (active) setCloudSynced(false); });
+    return () => { active = false; };
   }, [isOpen, user]);
 
-  const filteredHistory = useMemo(() => {
-    return history
-      .filter((item) => {
-        const matchesSearch = item.repoName
-          .toLowerCase()
-          .includes(search.toLowerCase());
-        const matchesScore =
-          filterScore === "all"
-            ? true
-            : filterScore === "good"
-            ? item.averageScore >= 8
-            : filterScore === "warning"
-            ? item.averageScore >= 5 && item.averageScore < 8
-            : item.averageScore < 5;
-        return matchesSearch && matchesScore;
-      })
-      .sort((a, b) => {
-        switch (sort) {
-          case "date-desc":
-            return (
-              new Date(b.lastAnalyzed).getTime() -
-              new Date(a.lastAnalyzed).getTime()
-            );
-          case "date-asc":
-            return (
-              new Date(a.lastAnalyzed).getTime() -
-              new Date(b.lastAnalyzed).getTime()
-            );
-          case "score-desc":
-            return b.averageScore - a.averageScore;
-          case "score-asc":
-            return a.averageScore - b.averageScore;
-          case "name-asc":
-            return a.repoName.localeCompare(b.repoName);
-          default:
-            return 0;
-        }
-      });
-  }, [history, search, sort, filterScore]);
+  const visible = useMemo(() => history.filter((item) => {
+    const matchesSearch = item.repoName.toLowerCase().includes(search.toLowerCase());
+    const matchesScore = filter === "all" || (filter === "good" ? item.averageScore >= 8 : filter === "warning" ? item.averageScore >= 6 && item.averageScore < 8 : item.averageScore < 6);
+    return matchesSearch && matchesScore;
+  }).sort((a, b) => sort === "date-desc" ? +new Date(b.lastAnalyzed) - +new Date(a.lastAnalyzed) : sort === "date-asc" ? +new Date(a.lastAnalyzed) - +new Date(b.lastAnalyzed) : sort === "score-desc" ? b.averageScore - a.averageScore : a.averageScore - b.averageScore), [history, search, sort, filter]);
 
-  return (
-    <>
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0,0,0,0.5)",
-          backdropFilter: "blur(4px)",
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? "auto" : "none",
-          transition: "opacity 0.3s",
-          zIndex: 90,
-        }}
-        onClick={onClose}
-      />
-
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: "min(400px, 100vw)",
-          background: "var(--bg-panel)",
-          borderLeft: "1px solid var(--border-subtle)",
-          transform: isOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          zIndex: 100,
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "-10px 0 30px rgba(0,0,0,0.5)",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            padding: "1.5rem",
-            borderBottom: "1px solid var(--border-subtle)",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <h2 style={{ margin: 0, fontSize: "1.25rem" }}>History</h2>
-              {isCloudSynced && (
-                <span style={{
-                  display: "flex", alignItems: "center", gap: "0.25rem",
-                  fontSize: "0.7rem", color: "#22c55e", fontWeight: 500,
-                  padding: "0.1rem 0.4rem", borderRadius: "10px",
-                  border: "1px solid rgba(34,197,94,0.3)",
-                  background: "rgba(34,197,94,0.06)",
-                }}>
-                  <MdCloud size={11} /> Synced
-                </span>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: "1.5rem", color: "var(--text-secondary)",
-              }}
-            >
-              ×
-            </button>
-          </div>
-
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", alignItems: "center" }}>
-            <div
-              className="input-field"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                flex: 1,
-                padding: "0.4rem 0.6rem",
-                gap: "0.4rem",
-              }}
-            >
-              <MdSearch style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
-              <input
-                type="text"
-                placeholder="Search repos..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  width: "100%",
-                  outline: "none",
-                  color: "var(--text-primary)",
-                  fontSize: "0.875rem",
-                }}
-              />
-            </div>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortOption)}
-              style={{
-                padding: "0.4rem 0.5rem",
-                border: "1.5px solid var(--border-subtle)",
-                borderRadius: "var(--radius-sm)",
-                background: "var(--bg-page)",
-                color: "var(--text-primary)",
-                fontSize: "0.8rem",
-                outline: "none",
-                cursor: "pointer",
-                width: "100px",
-                flexShrink: 0,
-              }}
-            >
-              <option value="date-desc">Newest</option>
-              <option value="date-asc">Oldest</option>
-              <option value="score-desc">High Score</option>
-              <option value="score-asc">Low Score</option>
-            </select>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              overflowX: "auto",
-              paddingBottom: "0.25rem",
-            }}
-          >
-            {(["all", "good", "warning", "bad"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilterScore(f)}
-                style={{
-                  padding: "0.25rem 0.75rem",
-                  borderRadius: "20px",
-                  border: "1px solid",
-                  borderColor:
-                    filterScore === f
-                      ? "var(--accent-primary)"
-                      : "var(--border-subtle)",
-                  background:
-                    filterScore === f ? "var(--accent-primary)" : "transparent",
-                  color: filterScore === f ? "white" : "var(--text-secondary)",
-                  fontSize: "0.8rem",
-                  cursor: "pointer",
-                  textTransform: "capitalize",
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* List */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
-          {filteredHistory.length === 0 ? (
-            <div
-              style={{
-                padding: "4rem 2rem",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Empty
-                description={<span style={{ color: "var(--text-secondary)" }}>No analysis history yet</span>}
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-              />
-              <button
-                className="btn-primary"
-                style={{ marginTop: "1rem" }}
-                onClick={onClose}
-              >
-                Analyze a repository to get started
-              </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-              }}
-            >
-              {filteredHistory.map((item) => (
-                <div
-                  key={item.repoName}
-                  className="panel"
-                  style={{
-                    padding: "1rem",
-                    border: "1px solid var(--border-subtle)",
-                    position: "relative",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "0.75rem",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div
-                      style={{ flex: 1, cursor: "pointer" }}
-                      onClick={() => {
-                        onSelectRepo(`https://github.com/${item.repoName}`);
-                        onClose();
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: "0.25rem",
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                          {item.repoName}
-                        </span>
-                        <span
-                          style={{
-                            fontWeight: 700,
-                            color:
-                              item.averageScore >= 8
-                                ? "var(--status-good)"
-                                : item.averageScore >= 5
-                                ? "var(--status-warning)"
-                                : "var(--status-bad)",
-                          }}
-                        >
-                          {item.averageScore.toFixed(1)}
-                        </span>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "1rem",
-                          fontSize: "0.8rem",
-                          color: "var(--text-secondary)",
-                          marginBottom: "0.5rem",
-                        }}
-                      >
-                        <span>
-                          {new Date(item.lastAnalyzed).toLocaleDateString()}
-                        </span>
-                        <span>{item.totalCommits} commits</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+  if (!isOpen || !user) return null;
+  return <div className="drawer-layer" role="presentation">
+    <button className="drawer-backdrop" onClick={onClose} aria-label="Close history" />
+    <aside className="history-drawer" role="dialog" aria-modal="true" aria-labelledby="history-title">
+      <header className="drawer-header"><div><span>Saved analyses</span><h2 id="history-title">History</h2></div><button onClick={onClose} aria-label="Close history"><MdClose /></button></header>
+      <div className="history-controls">
+        <label><MdSearch /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a repository" /></label>
+        <select value={sort} onChange={(event) => setSort(event.target.value as SortOption)} aria-label="Sort history"><option value="date-desc">Newest first</option><option value="date-asc">Oldest first</option><option value="score-desc">Highest score</option><option value="score-asc">Lowest score</option></select>
+        <div className="history-filters">{(["all", "good", "warning", "bad"] as const).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}</div>
       </div>
-    </>
-  );
+      <div className="history-list">
+        <div className="sync-status"><MdCloudDone /> {cloudSynced ? "Cloud history connected" : "Connecting to cloud history"}</div>
+        {visible.length ? visible.map((item, index) => {
+          const tone = item.averageScore >= 8 ? "good" : item.averageScore >= 6 ? "warning" : "bad";
+          return <button className={`history-item tone-${tone}`} key={item.repoName} onClick={() => { onSelectRepo(`https://github.com/${item.repoName}`); onClose(); }}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{item.repoName}</strong><small>{new Date(item.lastAnalyzed).toLocaleDateString()} · {item.totalCommits.toLocaleString()} commits</small></div><b>{item.averageScore.toFixed(1)}</b></button>;
+        }) : <div className="history-empty"><span>00</span><h3>No synced analyses yet.</h3><p>Run a repository analysis while signed in and it will appear here.</p><button onClick={onClose}>Start an analysis</button></div>}
+      </div>
+    </aside>
+  </div>;
 };

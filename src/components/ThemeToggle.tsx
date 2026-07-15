@@ -1,82 +1,22 @@
 import { useEffect, useState } from "react";
-import { MdDarkMode } from "react-icons/md";
-import { CiLight } from "react-icons/ci";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
+
+const initialTheme = (): "light" | "dark" => {
+  const saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+};
 
 export const ThemeToggle = ({ variant = "button" }: { variant?: "button" | "menuItem" }) => {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
-
+  const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   useEffect(() => {
-    const savedTheme =
-      (localStorage.getItem("theme") as "light" | "dark") || "dark"; // Default to dark for premium feel
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTheme(savedTheme);
-    document.documentElement.setAttribute("data-theme", savedTheme);
-  }, []);
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
-  };
-
-  if (variant === "menuItem") {
-    return (
-      <button
-        onClick={toggleTheme}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.75rem",
-          padding: "0.65rem 0.5rem",
-          border: "none",
-          background: "transparent",
-          color: "var(--text-primary)",
-          cursor: "pointer",
-          fontSize: "0.85rem",
-          borderRadius: "6px",
-          transition: "background 0.15s",
-          textAlign: "left",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-panel-hover)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-        aria-label="Toggle Dark Mode"
-      >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "18px",
-            color: "var(--text-secondary)",
-            transform: theme === "light" ? "rotate(0deg)" : "rotate(360deg)",
-            transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-          }}
-        >
-          {theme === "light" ? <MdDarkMode size={18} /> : <CiLight size={18} />}
-        </span>
-        <span>{theme === "light" ? "Dark Mode" : "Light Mode"}</span>
-      </button>
-    );
-  }
-
-  return (
-    <button
-      onClick={toggleTheme}
-      className="btn-secondary"
-      aria-label="Toggle Dark Mode"
-    >
-      <span
-        style={{
-          display: "inline-block",
-          transform: theme === "light" ? "rotate(0deg)" : "rotate(360deg)",
-          transition: "transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-        }}
-      >
-        {theme === "light" ? <MdDarkMode /> : <CiLight />}
-      </span>
-      <span>{theme === "light" ? "Dark Mode" : "Light Mode"}</span>
-    </button>
-  );
+  const nextTheme = theme === "light" ? "dark" : "light";
+  const toggle = () => setTheme(nextTheme);
+  if (variant === "menuItem") return <button className="theme-menu-item" onClick={toggle}><span>{theme === "light" ? <MdDarkMode /> : <MdLightMode />}</span><span><strong>Use {nextTheme} mode</strong><small>Current appearance: {theme}</small></span></button>;
+  return <button className="theme-toggle" onClick={toggle} aria-label={`Switch to ${nextTheme} mode`} title={`Switch to ${nextTheme} mode`}><span className={theme === "light" ? "active" : ""}><MdLightMode /></span><span className={theme === "dark" ? "active" : ""}><MdDarkMode /></span></button>;
 };
