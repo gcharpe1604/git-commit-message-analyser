@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test:pdf": "node --experimental-strip-types tests/pdfReport.test.mts",
     "test:scoring": "node --experimental-strip-types tests/scoringEngine.test.mts",
+    "test:workflows": "node --experimental-strip-types tests/workflows.test.mts",
     "preview": "vite preview"
   },
   "dependencies": {

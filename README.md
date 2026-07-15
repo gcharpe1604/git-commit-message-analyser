@@ -230,6 +230,18 @@ VITE_GITHUB_TOKEN=your_github_token
 
 ---
 
+### Supabase history schema
+
+Signed-in analysis history is stored in the Supabase `public.analyses` table. For a new Supabase project, apply the checked-in migration before testing History:
+
+```bash
+supabase db push
+```
+
+The migration enables row-level security so each authenticated user can only read and change their own saved analyses.
+
+---
+
 ## Why Commit Messages Matter
 
 A commit message is documentation written at the moment of change — when context is freshest. Poor commit histories make code review harder, debug sessions slower, and onboarding more painful.

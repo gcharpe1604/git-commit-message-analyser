@@ -1,15 +1,20 @@
 import { memo, useState } from "react";
-import { MdArrowOutward, MdCheck, MdContentCopy, MdExpandMore, MdPerson } from "react-icons/md";
+import { MdArrowOutward, MdAutoAwesome, MdCheck, MdContentCopy, MdExpandMore, MdPerson } from "react-icons/md";
 import type { Commit } from "../types";
 import { getRelativeTime } from "../utils/time";
 import { useAuth } from "../hooks/useAuth";
 import { AuthModal } from "./AuthModal";
+import { useLLM } from "../hooks/useLLM";
+import { fetchCommitDiff } from "../services/githubService";
 
-export const CommitCard = memo(({ commit, index }: { commit: Commit; index: number }) => {
+export const CommitCard = memo(({ repoName, commit, index }: { repoName: string; commit: Commit; index: number }) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [improvedMessage, setImprovedMessage] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const { user } = useAuth();
+  const { generateMessage, loading: aiLoading, hasApiKey, error: generationError } = useLLM();
   const analysis = commit.analysis;
   const score = analysis?.score ?? 0;
   const tone = score >= 8 ? "good" : score >= 6 ? "warning" : "bad";
@@ -26,6 +31,18 @@ export const CommitCard = memo(({ commit, index }: { commit: Commit; index: numb
     if (opening && !user && !sessionStorage.getItem("commit-review-signup-shown")) {
       sessionStorage.setItem("commit-review-signup-shown", "true");
       setAuthOpen(true);
+    }
+  };
+  const improveWithAi = async () => {
+    if (!user) { setAuthOpen(true); return; }
+    if (!hasApiKey) { setAiError("Add a Groq, OpenRouter, or Gemini key from your account menu first."); return; }
+    setAiError(null);
+    try {
+      const diff = await fetchCommitDiff(repoName, commit.sha);
+      const improved = await generateMessage(diff, `Improve this existing commit message using only the supplied diff as evidence: ${firstLine}`);
+      if (improved) setImprovedMessage(improved);
+    } catch (caught) {
+      setAiError(caught instanceof Error ? caught.message : "Unable to generate an improved message.");
     }
   };
 
@@ -62,8 +79,14 @@ export const CommitCard = memo(({ commit, index }: { commit: Commit; index: numb
             )}
           </>
         ) : <div className="commit-clean"><MdCheck /> No issues found in this message</div>}
+        <div className="commit-ai-action">
+          <button type="button" onClick={improveWithAi} disabled={aiLoading}><MdAutoAwesome /> {aiLoading ? "Reading commit changes..." : "Improve with AI"}</button>
+          <span>Uses the commit's GitHub diff · Groq → OpenRouter → Gemini</span>
+          {(aiError || generationError) && <p role="alert">{aiError || generationError}</p>}
+          {improvedMessage && <div className="commit-ai-result"><span>AI-improved message</span><code>{improvedMessage}</code><button type="button" onClick={() => navigator.clipboard.writeText(improvedMessage)}><MdContentCopy /> Copy</button></div>}
+        </div>
       </div>
-      {!user && <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} variant="commitReview" />}
+      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} variant="commitReview" />
     </article>
   );
 });

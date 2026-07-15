@@ -141,6 +141,29 @@ export const fetchCommits = async (repoUrl: string, page: number = 1): Promise<{
   return { commits, totalCount };
 };
 
+export const fetchCommitDiff = async (repoName: string, sha: string): Promise<string> => {
+  const [owner, repo, ...rest] = repoName.split("/");
+  if (!owner || !repo || rest.length || !/^[a-f0-9]{7,40}$/i.test(sha)) throw new Error("Invalid repository or commit reference.");
+
+  const response = await retryWithBackoff(
+    () => fetch(`${GITHUB_API_URL}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits/${encodeURIComponent(sha)}`, {
+      headers: { ...getHeaders(), Accept: "application/vnd.github.v3.diff" },
+    }),
+    CONSTANTS.API.RETRY_ATTEMPTS,
+    CONSTANTS.API.RETRY_BASE_DELAY,
+  );
+
+  if (!response.ok) {
+    if (response.status === 404) throw new Error("GitHub could not find the commit diff.");
+    if (response.status === 403) throw new Error("GitHub rate limit reached while reading the commit diff.");
+    throw new Error(`Failed to fetch the commit diff (${response.status}).`);
+  }
+
+  const diff = await response.text();
+  if (!diff.trim()) throw new Error("This commit does not expose a readable diff.");
+  return diff;
+};
+
 
 export const fetchUserRepos = async (username: string): Promise<import('../types').Repository[]> => {
   const apiUrl = `${GITHUB_API_URL}/users/${username}/repos?sort=updated&per_page=${CONSTANTS.API.REPOS_PER_PAGE}&type=owner`;

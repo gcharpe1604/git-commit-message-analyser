@@ -9,6 +9,23 @@ export interface AnalysisRecord {
   created_at?: string;
 }
 
+export class AnalysisStorageError extends Error {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
+    super(message);
+    this.name = 'AnalysisStorageError';
+    this.code = code;
+  }
+}
+
+const storageError = (operation: string, error: { message: string; code?: string }) => {
+  const setupHint = error.code === '42P01' || /relation .*analyses.* does not exist/i.test(error.message)
+    ? ' The analyses table has not been configured in Supabase.'
+    : '';
+  return new AnalysisStorageError(`${operation}.${setupHint}`.trim(), error.code);
+};
+
 const getAuthenticatedUserId = async (): Promise<string | null> => {
   const { data, error } = await supabase.auth.getUser();
   return error ? null : data.user?.id ?? null;
@@ -40,7 +57,7 @@ export const saveAnalysisToCloud = async (
 
   if (error) {
     console.error('Failed to save analysis to cloud:', error.message);
-    return false;
+    throw storageError('Could not save this analysis to History', error);
   }
   return true;
 };
@@ -53,13 +70,13 @@ export const fetchUserAnalyses = async (): Promise<AnalysisRecord[]> => {
   if (!userId) return [];
   const { data, error } = await supabase
     .from('analyses')
-    .select('*')
+    .select('id,user_id,repo_name,avg_score,total_commits,created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Failed to fetch analyses:', error.message);
-    return [];
+    throw storageError('Could not load History', error);
   }
   return data || [];
 };
@@ -80,7 +97,7 @@ export const deleteAnalysisFromCloud = async (
 
   if (error) {
     console.error('Failed to delete analysis:', error.message);
-    return false;
+    throw storageError('Could not delete this History item', error);
   }
   return true;
 };

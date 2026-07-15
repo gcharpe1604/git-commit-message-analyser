@@ -33,7 +33,19 @@ export class LLMService {
   }
 
   private cleanResponse(text: string): string {
-    return text.replace(/^```(git|commit)?\n/, "").replace(/\n```$/, "").trim();
+    return text.replace(/^```(?:git|commit|text)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+
+  private async readChatCompletion(response: Response, provider: string): Promise<string> {
+    if (!response.ok) {
+      const body = await response.text();
+      const detail = body.slice(0, 180).replace(/\s+/g, " ");
+      throw new Error(`${provider} returned ${response.status}${detail ? `: ${detail}` : ""}`);
+    }
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+    const content = data.choices?.[0]?.message?.content;
+    if (!content?.trim()) throw new Error(`${provider} returned an empty response`);
+    return this.cleanResponse(content);
   }
 
   private async generateWithGroq(prompt: string): Promise<string> {
@@ -56,10 +68,7 @@ export class LLMService {
       })
     });
 
-    if (!response.ok) throw new Error(`Groq API Error: ${response.statusText}`);
-    
-    const data = await response.json();
-    return this.cleanResponse(data.choices[0].message.content);
+    return this.readChatCompletion(response, "Groq");
   }
 
   private async generateWithOpenRouter(prompt: string): Promise<string> {
@@ -72,7 +81,7 @@ export class LLMService {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "google/gemini-2.0-flash-001",
+        model: "~google/gemini-flash-latest",
         messages: [
           { role: "user", content: prompt }
         ],
@@ -81,16 +90,13 @@ export class LLMService {
       })
     });
 
-    if (!response.ok) throw new Error(`OpenRouter API Error: ${response.statusText}`);
-    
-    const data = await response.json();
-    return this.cleanResponse(data.choices[0].message.content);
+    return this.readChatCompletion(response, "OpenRouter");
   }
 
   private async generateWithGemini(prompt: string): Promise<string> {
     if (!this.genAI) throw new Error("No Gemini Key");
     
-    const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    const models = ["gemini-2.5-flash"];
     
     for (const modelName of models) {
       try {
@@ -166,7 +172,8 @@ Generate a single commit message.
       return await this.generateWithFallback(prompt);
     } catch (error) {
       console.error("LLM Generation Error:", error);
-      throw new Error("Failed to generate commit message. Please check your API keys.");
+      if (error instanceof Error) throw error;
+      throw new Error("Failed to generate a commit message.");
     }
   }
 

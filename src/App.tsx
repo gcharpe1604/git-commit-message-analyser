@@ -13,21 +13,23 @@ import { fetchUserAnalyses, saveAnalysisToCloud } from "./services/analysisServi
 import { fetchCommits, fetchUserRepos } from "./services/githubService";
 import type { Commit, RepoStats, Repository } from "./types";
 import { calculateRepoStats } from "./utils/simpleAnalyzer";
+import { buildAnalysisPath, buildRepositoryAnalysisPath, buildRepositoryWorkshopPath, getAnalysisBackPath } from "./utils/routes";
 
 const Playground = lazy(() => import("./components/Playground").then((module) => ({ default: module.Playground })));
 const AnalysisPage = lazy(() => import("./components/pages/AnalysisPage").then((module) => ({ default: module.AnalysisPage })));
 const DeveloperReposPage = lazy(() => import("./components/pages/DeveloperReposPage").then((module) => ({ default: module.DeveloperReposPage })));
 const LandingPage = lazy(() => import("./components/pages/LandingPage").then((module) => ({ default: module.LandingPage })));
-
-const repoPathFromInput = (input: string) => input.trim().replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
+const RepositoryWorkshopPage = lazy(() => import("./components/pages/RepositoryWorkshopPage").then((module) => ({ default: module.RepositoryWorkshopPage })));
 
 function App() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const analysisMatch = useMatch("/analysis/:owner/:repo");
+  const repositoryWorkshopMatch = useMatch("/analysis/:owner/:repo/workshop");
   const developerMatch = useMatch("/developers/:username");
-  const routedRepo = analysisMatch ? `${analysisMatch.params.owner}/${analysisMatch.params.repo}` : null;
+  const activeRepositoryMatch = analysisMatch ?? repositoryWorkshopMatch;
+  const routedRepo = activeRepositoryMatch ? `${activeRepositoryMatch.params.owner}/${activeRepositoryMatch.params.repo}` : null;
   const routedUser = developerMatch?.params.username ?? null;
   const [commits, setCommits] = useState<Commit[]>([]);
   const [userRepos, setUserRepos] = useState<Repository[]>([]);
@@ -54,7 +56,7 @@ function App() {
     fetchUserAnalyses().then((items) => {
       if (!active) return;
       setHistoryItems(items.map((item) => ({ repoName: item.repo_name, averageScore: item.avg_score, totalCommits: item.total_commits, goodCommits: 0, warningCommits: 0, badCommits: 0, lastAnalyzed: item.created_at || new Date().toISOString() })));
-    });
+    }).catch((caught) => console.warn(caught instanceof Error ? caught.message : "Could not load History"));
     return () => { active = false; };
   }, [user]);
 
@@ -64,14 +66,19 @@ function App() {
     setLoading(true);
     setError(null);
     setApiPage(1);
-    setUserRepos([]);
     try {
       const { commits: fetchedCommits, totalCount } = await fetchCommits(`https://github.com/${repoName}`, 1);
       const newStats = calculateRepoStats(fetchedCommits, repoName, totalCount);
       setCommits(fetchedCommits);
       setStats(newStats);
-      if (user && await saveAnalysisToCloud(repoName, newStats.averageScore, newStats.totalCommits)) {
-        setHistoryItems((items) => [newStats, ...items.filter((item) => item.repoName !== repoName)]);
+      if (user) {
+        try {
+          if (await saveAnalysisToCloud(repoName, newStats.averageScore, newStats.totalCommits)) {
+            setHistoryItems((items) => [newStats, ...items.filter((item) => item.repoName !== repoName)]);
+          }
+        } catch (storageFailure) {
+          console.warn(storageFailure instanceof Error ? storageFailure.message : "Could not save History");
+        }
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "An unknown error occurred");
@@ -88,6 +95,7 @@ function App() {
     setError(null);
     setStats(null);
     setCommits([]);
+    if (loadedDeveloper !== username) setUserRepos([]);
     try {
       setUserRepos(await fetchUserRepos(username));
       setLoadedDeveloper(username);
@@ -97,7 +105,7 @@ function App() {
       setLoading(false);
       loadingTarget.current = null;
     }
-  }, []);
+  }, [loadedDeveloper]);
 
   useEffect(() => {
     if (routedRepo && stats?.repoName !== routedRepo) queueMicrotask(() => void loadRepository(routedRepo));
@@ -108,15 +116,14 @@ function App() {
   }, [loadDeveloper, loadedDeveloper, routedUser]);
 
   const addRecent = (input: string) => setRecentSearches((current) => [input, ...current.filter((item) => item !== input)].slice(0, CONSTANTS.STORAGE.MAX_RECENT_SEARCHES));
-  const openRepository = (input: string) => {
-    const repo = repoPathFromInput(input);
-    const [owner, name] = repo.split("/");
-    if (!owner || !name) { setError("Enter a repository as owner/name or paste its GitHub URL."); return; }
-    navigate(`/analysis/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
+  const openRepository = (input: string, fromDeveloper?: string | null) => {
+    const path = buildAnalysisPath(input, fromDeveloper);
+    if (!path) { setError("Enter a repository as owner/name or paste its GitHub URL."); return; }
+    navigate(path);
   };
   const handleInputSubmit = (input: string, mode: "user" | "repo") => {
     if (!input.trim()) { setError("Please enter a GitHub username or repository URL"); return; }
-    const label = repoPathFromInput(input);
+    const label = input.trim().replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
     addRecent(label);
     if (mode === "repo") openRepository(label);
     else navigate(`/developers/${encodeURIComponent(input.trim())}`);
@@ -134,20 +141,33 @@ function App() {
     } finally { setFetchingMore(false); }
   };
   const goHome = () => { setError(null); navigate("/"); };
+  const analysisBackPath = getAnalysisBackPath(location.search);
+  const goBackFromAnalysis = () => { setError(null); navigate(analysisBackPath); };
+  const openRepositoryWorkshop = () => {
+    if (!routedRepo) { navigate("/workshop"); return; }
+    const path = buildRepositoryWorkshopPath(routedRepo, location.search);
+    if (path) navigate(path);
+  };
+  const openRepositoryAnalysis = () => {
+    if (!routedRepo) return;
+    const path = buildRepositoryAnalysisPath(routedRepo, location.search);
+    if (path) navigate(path);
+  };
   const focusAnalyzer = () => {
     navigate("/");
     window.setTimeout(() => searchInputRef.current?.focus(), 0);
   };
-  const viewMode = analysisMatch ? "analysis" : developerMatch ? "repoList" : location.pathname === "/workshop" ? "playground" : "input";
+  const viewMode = activeRepositoryMatch ? "analysis" : developerMatch ? "repoList" : location.pathname === "/workshop" ? "playground" : "input";
 
   return <div className="container" id="top">
-    <AppNavbar viewMode={viewMode} historyCount={historyItems.length} isAuthenticated={Boolean(user)} isMobileMenuOpen={isMobileMenuOpen} onHome={goHome} onHistory={() => { if (user) setShowHistory(true); }} onSettings={() => { if (user) setShowSettings(true); }} onAnalyze={focusAnalyzer} onWorkshop={() => navigate("/workshop")} onToggleMobile={() => setIsMobileMenuOpen((open) => !open)} />
+    <AppNavbar viewMode={viewMode} historyCount={historyItems.length} isAuthenticated={Boolean(user)} isMobileMenuOpen={isMobileMenuOpen} onHome={goHome} onHistory={() => { if (user) setShowHistory(true); }} onSettings={() => { if (user) setShowSettings(true); }} onAnalyze={focusAnalyzer} onWorkshop={openRepositoryWorkshop} onToggleMobile={() => setIsMobileMenuOpen((open) => !open)} />
     <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
     <main>
       {error ? <section className="error-page animate-in"><span><MdErrorOutline /></span><p className="eyebrow">Analysis interrupted</p><h1>We couldn't read that repository.</h1><p>{error.includes("rate limit") ? "GitHub's request limit has been reached. Try again later or add a token." : error}</p><button className="btn-primary" onClick={goHome}>Return to the analyzer</button></section> : <Suspense fallback={<div className="route-loading"><strong>Preparing GitAnalyzer</strong></div>}><Routes>
         <Route path="/" element={<LandingPage userSignedIn={Boolean(user)} historyItems={historyItems} loading={loading} recentSearches={recentSearches} inputRef={searchInputRef} onAnalyze={handleInputSubmit} onOpenHistory={() => { if (user) setShowHistory(true); }} onRemoveRecent={(input) => setRecentSearches((items) => items.filter((item) => item !== input))} onClearRecent={() => setRecentSearches([])} />} />
-        <Route path="/developers/:username" element={<DeveloperReposPage username={routedUser ?? ""} repos={userRepos} loading={loading} onBack={goHome} onSelectRepo={openRepository} />} />
-        <Route path="/analysis/:owner/:repo" element={<AnalysisPage stats={stats?.repoName === routedRepo ? stats : null} commits={commits} loading={loading} fetchingMore={fetchingMore} onBack={goHome} onWorkshop={() => navigate("/workshop?mode=diff")} onLoadMore={handleLoadMore} />} />
+        <Route path="/developers/:username" element={<DeveloperReposPage username={routedUser ?? ""} repos={userRepos} loading={loading} onBack={goHome} onSelectRepo={(url) => openRepository(url, routedUser)} />} />
+        <Route path="/analysis/:owner/:repo" element={<AnalysisPage stats={stats?.repoName === routedRepo ? stats : null} commits={commits} loading={loading} fetchingMore={fetchingMore} onBack={goBackFromAnalysis} onWorkshop={openRepositoryWorkshop} onLoadMore={handleLoadMore} />} />
+        <Route path="/analysis/:owner/:repo/workshop" element={<RepositoryWorkshopPage repoName={routedRepo ?? ""} onBack={goBackFromAnalysis} onAnalysis={openRepositoryAnalysis} />} />
         <Route path="/workshop" element={<Playground />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes></Suspense>}

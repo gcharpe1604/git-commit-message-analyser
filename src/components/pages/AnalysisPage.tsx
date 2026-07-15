@@ -24,6 +24,6 @@ export const AnalysisPage = ({ stats, commits, loading, fetchingMore, onBack, on
     </div>
     <SummarySection stats={stats} />
     <FeatureUnlockNotice context="analysis" />
-    <CommitList key={stats.repoName} commits={commits} totalCommitsCount={stats.totalCommits} isLoading={fetchingMore} onFetchCommits={onLoadMore} />
+    <CommitList key={stats.repoName} repoName={stats.repoName} commits={commits} totalCommitsCount={stats.totalCommits} isLoading={fetchingMore} onFetchCommits={onLoadMore} />
   </div>;
 };

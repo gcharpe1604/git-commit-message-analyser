@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MdClose, MdCloudDone, MdSearch } from "react-icons/md";
+import { MdClose, MdCloudDone, MdErrorOutline, MdSearch } from "react-icons/md";
 import { fetchUserAnalyses } from "../services/analysisService";
 import { useAuth } from "../hooks/useAuth";
 import type { RepoStats } from "../types";
@@ -12,11 +12,17 @@ export const HistorySidebar = ({ isOpen, onClose, onSelectRepo }: { isOpen: bool
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("date-desc");
   const [filter, setFilter] = useState<"all" | "good" | "warning" | "bad">("all");
-  const [cloudSynced, setCloudSynced] = useState(false);
+  const [cloudState, setCloudState] = useState<"loading" | "connected" | "error">("loading");
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !user) return;
     let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      setCloudState("loading");
+      setCloudError(null);
+    });
     fetchUserAnalyses().then((cloud) => {
       if (!active) return;
       setHistory(cloud.map((item) => ({
@@ -28,8 +34,12 @@ export const HistorySidebar = ({ isOpen, onClose, onSelectRepo }: { isOpen: bool
         badCommits: 0,
         lastAnalyzed: item.created_at || new Date().toISOString(),
       })));
-      setCloudSynced(true);
-    }).catch(() => { if (active) setCloudSynced(false); });
+      setCloudState("connected");
+    }).catch((caught) => {
+      if (!active) return;
+      setCloudState("error");
+      setCloudError(caught instanceof Error ? caught.message : "Could not connect to History.");
+    });
     return () => { active = false; };
   }, [isOpen, user]);
 
@@ -50,11 +60,11 @@ export const HistorySidebar = ({ isOpen, onClose, onSelectRepo }: { isOpen: bool
         <div className="history-filters">{(["all", "good", "warning", "bad"] as const).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}</div>
       </div>
       <div className="history-list">
-        <div className="sync-status"><MdCloudDone /> {cloudSynced ? "Cloud history connected" : "Connecting to cloud history"}</div>
-        {visible.length ? visible.map((item, index) => {
+        <div className={`sync-status ${cloudState === "error" ? "is-error" : ""}`}>{cloudState === "error" ? <MdErrorOutline /> : <MdCloudDone />} {cloudState === "connected" ? "Cloud history connected" : cloudState === "loading" ? "Connecting to cloud history" : cloudError}</div>
+        {cloudState !== "error" && (visible.length ? visible.map((item, index) => {
           const tone = item.averageScore >= 8 ? "good" : item.averageScore >= 6 ? "warning" : "bad";
           return <button className={`history-item tone-${tone}`} key={item.repoName} onClick={() => { onSelectRepo(`https://github.com/${item.repoName}`); onClose(); }}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{item.repoName}</strong><small>{new Date(item.lastAnalyzed).toLocaleDateString()} · {item.totalCommits.toLocaleString()} commits</small></div><b>{item.averageScore.toFixed(1)}</b></button>;
-        }) : <div className="history-empty"><span>00</span><h3>No synced analyses yet.</h3><p>Run a repository analysis while signed in and it will appear here.</p><button onClick={onClose}>Start an analysis</button></div>}
+        }) : <div className="history-empty"><span>00</span><h3>No synced analyses yet.</h3><p>Run a repository analysis while signed in and it will appear here.</p><button onClick={onClose}>Start an analysis</button></div>)}
       </div>
     </aside>
   </div>;

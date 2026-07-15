@@ -7,13 +7,14 @@ import { Loader } from "./Loader";
 const PAGE_SIZE = 10;
 
 interface CommitListProps {
+  repoName: string;
   commits: Commit[];
   totalCommitsCount?: number;
   isLoading?: boolean;
   onFetchCommits?: (apiPage: number) => void;
 }
 
-export const CommitList = ({ commits, totalCommitsCount, isLoading, onFetchCommits }: CommitListProps) => {
+export const CommitList = ({ repoName, commits, totalCommitsCount, isLoading, onFetchCommits }: CommitListProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isPending, startTransition] = useTransition();
   const total = totalCommitsCount ?? commits.length;
@@ -38,7 +39,7 @@ export const CommitList = ({ commits, totalCommitsCount, isLoading, onFetchCommi
       {(isLoading && visible.length === 0) || isPending ? (
         <div className="loading-state"><Loader size={1.1} /><p>Loading commit history…</p></div>
       ) : visible.length ? (
-        <div className="commit-stack">{visible.map((commit, index) => <CommitCard key={commit.sha} commit={commit} index={start + index} />)}</div>
+        <div className="commit-stack">{visible.map((commit, index) => <CommitCard key={commit.sha} repoName={repoName} commit={commit} index={start + index} />)}</div>
       ) : (
         <div className="empty-state compact"><h3>No commits loaded for this page.</h3><p>Try the previous page or run the analysis again.</p></div>
       )}
