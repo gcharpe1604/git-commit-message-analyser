@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { MdArrowForward, MdAutoAwesome, MdCheck, MdClose, MdContentCopy, MdDelete, MdKey, MdSave } from "react-icons/md";
 import { useSearchParams } from "react-router-dom";
 import type { AnalysisResult } from "../types";
-import { analyzeCommit } from "../utils/simpleAnalyzer";
-import { debounce } from "../utils/debounce";
-import { CONSTANTS } from "../constants";
+import { getWorkshopAnalysis } from "../utils/workshopAnalysis";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useLLM } from "../hooks/useLLM";
 import { useAuth } from "../hooks/useAuth";
@@ -19,7 +17,6 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
   const [message, setMessage] = useState("");
   const [diff, setDiff] = useState("");
   const [mode, setMode] = useState<"write" | "diff">(() => searchParams.get("mode") === "diff" ? "diff" : "write");
-  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [drafts, setDrafts] = useLocalStorage<SavedDraft[]>("playground_drafts", []);
   const [authOpen, setAuthOpen] = useState(false);
   const [showWriteDiff, setShowWriteDiff] = useState(false);
@@ -28,9 +25,8 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
   const [aiLoading, setAiLoading] = useState(false);
   const aiRequestInFlight = useRef(false);
   const { generateMessage, hasApiKey, usage } = useLLM();
-  const analyze = useMemo(() => debounce((value: string) => setResult(value.trim() ? analyzeCommit(value) : null), CONSTANTS.ANIMATION.DEBOUNCE_DELAY), []);
-
-  useEffect(() => analyze(message), [message, analyze]);
+  // Rule-based feedback is synchronous, so the panel always reflects the current draft.
+  const result: AnalysisResult | null = getWorkshopAnalysis(message);
 
   const save = () => {
     if (!message.trim() || !result) return;
