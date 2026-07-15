@@ -22,8 +22,6 @@ export interface AIContextValue {
   usageError: string | null;
   refreshUsage: () => Promise<void>;
   generateMessage: (diff: string, context?: string) => Promise<string | null>;
-  loading: boolean;
-  error: string | null;
 }
 
 export const AIContext = createContext<AIContextValue | null>(null);

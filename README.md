@@ -210,9 +210,11 @@ npm install
 cp .env.example .env
 # Edit .env with your values
 
-# 4. Start the development server
+# 4. Start the full local app, including Netlify Functions for AI generation
 npm run dev
 ```
+
+Use `npm run dev:vite` only for UI work that does not need AI generation or other Netlify Functions.
 
 ### Environment Variables
 

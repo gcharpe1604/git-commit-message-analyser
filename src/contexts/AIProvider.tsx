@@ -18,13 +18,12 @@ const readPlatformResponse = async (response: Response): Promise<PlatformRespons
 };
 
 export const AIProvider = ({ children }: { children: ReactNode }) => {
-  const { user, session } = useAuth();
+  const { user, session, isDevelopmentBypass } = useAuth();
   const [accountKeys, setAccountKeys] = useLocalStorage<Record<string, { gemini: string; openRouter: string; groq: string }>>("account_ai_provider_keys", {});
+  const [developmentUsage, setDevelopmentUsage] = useLocalStorage<AISuggestionUsage | null>("development_ai_suggestion_usage", null);
   const [usage, setUsage] = useState<AISuggestionUsage | null>(null);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const userKeys = user ? accountKeys[user.id] : undefined;
   const userGeminiKey = userKeys?.gemini ?? "";
@@ -56,13 +55,13 @@ export const AIProvider = ({ children }: { children: ReactNode }) => {
       });
       const body = await readPlatformResponse(response);
       if (!response.ok || !body.usage) throw new Error(body.error || "Could not load AI suggestion usage.");
-      setUsage(body.usage);
+      setUsage(isDevelopmentBypass && developmentUsage ? developmentUsage : body.usage);
     } catch (caught) {
       setUsageError(caught instanceof Error ? caught.message : "Could not load AI suggestion usage.");
     } finally {
       setUsageLoading(false);
     }
-  }, [session, user]);
+  }, [developmentUsage, isDevelopmentBypass, session, user]);
 
   useEffect(() => {
     let active = true;
@@ -77,20 +76,25 @@ export const AIProvider = ({ children }: { children: ReactNode }) => {
   }, [hasUserApiKey, userGeminiKey, userGroqKey, userOpenRouterKey]);
 
   const generateMessage = useCallback(async (diff: string, context?: string) => {
-    if (!user || !session) { setError("Sign in before using AI generation."); return null; }
-    if (!diff.trim()) { setError("Paste a git diff before generating a commit message."); return null; }
+    if (!user || !session) throw new Error("Sign in before using AI generation.");
+    if (!diff.trim()) throw new Error("Paste a git diff before generating a commit message.");
 
-    setLoading(true);
-    setError(null);
     try {
       if (!usage || usage.remaining > 0) {
         const response = await fetch("/api/ai/suggestions", {
           method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+            ...(isDevelopmentBypass ? { "X-Local-AI-Usage": String(usage?.used ?? developmentUsage?.used ?? 0) } : {}),
+          },
           body: JSON.stringify({ diff, context }),
         });
         const body = await readPlatformResponse(response);
-        if (body.usage) setUsage(body.usage);
+        if (body.usage) {
+          setUsage(body.usage);
+          if (isDevelopmentBypass) setDevelopmentUsage(body.usage);
+        }
         if (response.ok && body.message) return body.message;
 
         if (!hasUserApiKey) {
@@ -104,12 +108,9 @@ export const AIProvider = ({ children }: { children: ReactNode }) => {
       if (personalMessage) return personalMessage;
       throw new Error("You have used all 15 free AI suggestions this month. Add a personal provider key to continue.");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Failed to generate a commit message.");
-      return null;
-    } finally {
-      setLoading(false);
+      throw caught instanceof Error ? caught : new Error("Failed to generate a commit message.");
     }
-  }, [generateWithPersonalKeys, hasUserApiKey, session, usage, user]);
+  }, [developmentUsage, generateWithPersonalKeys, hasUserApiKey, isDevelopmentBypass, session, setDevelopmentUsage, usage, user]);
 
   const value = useMemo(() => ({
     userGeminiKey,
@@ -125,9 +126,7 @@ export const AIProvider = ({ children }: { children: ReactNode }) => {
     usageError,
     refreshUsage,
     generateMessage,
-    loading,
-    error,
-  }), [error, generateMessage, hasApiKey, hasUserApiKey, loading, refreshUsage, updateKey, usage, usageError, usageLoading, userGeminiKey, userGroqKey, userOpenRouterKey]);
+  }), [generateMessage, hasApiKey, hasUserApiKey, refreshUsage, updateKey, usage, usageError, usageLoading, userGeminiKey, userGroqKey, userOpenRouterKey]);
 
   return <AIContext.Provider value={value}>{children}</AIContext.Provider>;
 };

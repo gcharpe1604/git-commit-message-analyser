@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { MdArrowOutward, MdAutoAwesome, MdCheck, MdContentCopy, MdExpandMore, MdPerson } from "react-icons/md";
 import type { Commit } from "../types";
 import { getRelativeTime } from "../utils/time";
@@ -13,8 +13,10 @@ export const CommitCard = memo(({ repoName, commit, index }: { repoName: string;
   const [authOpen, setAuthOpen] = useState(false);
   const [improvedMessage, setImprovedMessage] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiRequestInFlight = useRef(false);
   const { user } = useAuth();
-  const { generateMessage, loading: aiLoading, hasApiKey, usage, error: generationError } = useLLM();
+  const { generateMessage, hasApiKey, usage } = useLLM();
   const analysis = commit.analysis;
   const score = analysis?.score ?? 0;
   const tone = score >= 8 ? "good" : score >= 6 ? "warning" : "bad";
@@ -34,8 +36,11 @@ export const CommitCard = memo(({ repoName, commit, index }: { repoName: string;
     }
   };
   const improveWithAi = async () => {
+    if (aiRequestInFlight.current) return;
     if (!user) { setAuthOpen(true); return; }
     if (!hasApiKey) { setAiError(`You have used ${usage?.used ?? 15}/${usage?.limit ?? 15} free suggestions. Add a personal provider key to continue.`); return; }
+    aiRequestInFlight.current = true;
+    setAiLoading(true);
     setAiError(null);
     try {
       const diff = await fetchCommitDiff(repoName, commit.sha);
@@ -43,6 +48,9 @@ export const CommitCard = memo(({ repoName, commit, index }: { repoName: string;
       if (improved) setImprovedMessage(improved);
     } catch (caught) {
       setAiError(caught instanceof Error ? caught.message : "Unable to generate an improved message.");
+    } finally {
+      aiRequestInFlight.current = false;
+      setAiLoading(false);
     }
   };
 
@@ -82,7 +90,7 @@ export const CommitCard = memo(({ repoName, commit, index }: { repoName: string;
         <div className="commit-ai-action">
           <button type="button" onClick={improveWithAi} disabled={aiLoading}><MdAutoAwesome /> {aiLoading ? "Reading commit changes..." : "Improve with AI"}</button>
           <span>Uses the commit's GitHub diff · Groq → OpenRouter → Gemini</span>
-          {(aiError || generationError) && <p role="alert">{aiError || generationError}</p>}
+          {aiError && <p role="alert">{aiError}</p>}
           {improvedMessage && <div className="commit-ai-result"><span>AI-improved message</span><code>{improvedMessage}</code><button type="button" onClick={() => navigator.clipboard.writeText(improvedMessage)}><MdContentCopy /> Copy</button></div>}
         </div>
       </div>

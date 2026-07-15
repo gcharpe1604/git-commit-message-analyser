@@ -13,6 +13,21 @@ interface Reservation extends Usage {
   allowed: boolean;
 }
 
+let developmentUsed = 0;
+
+const developmentUsage = (): Usage => {
+  const periodStart = new Date().toISOString().slice(0, 7);
+  const resetDate = new Date(`${periodStart}-01T00:00:00.000Z`);
+  resetDate.setUTCMonth(resetDate.getUTCMonth() + 1);
+  return {
+    used: developmentUsed,
+    limit: 15,
+    remaining: Math.max(15 - developmentUsed, 0),
+    periodStart: `${periodStart}-01`,
+    resetsAt: resetDate.toISOString(),
+  };
+};
+
 const json = (body: unknown, status = 200) => Response.json(body, {
   status,
   headers: { "Cache-Control": "no-store" },
@@ -37,21 +52,34 @@ export default async (request: Request) => {
   if (request.method === "OPTIONS") return new Response(null, { status: 204 });
   if (request.method !== "GET" && request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  const token = getBearerToken(request);
+  const isDevelopmentBypass = process.env.NETLIFY_DEV === "true"
+    && Boolean(process.env.AI_DEV_BYPASS_TOKEN)
+    && token === process.env.AI_DEV_BYPASS_TOKEN;
+  const localUsageHeader = Number(request.headers.get("x-local-ai-usage"));
+  const localUsage = Number.isInteger(localUsageHeader) && localUsageHeader >= 0 && localUsageHeader <= 15
+    ? localUsageHeader
+    : 0;
+  if (isDevelopmentBypass && request.method === "GET") return json({ usage: { ...developmentUsage(), used: localUsage, remaining: 15 - localUsage } });
+
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   const supabaseSecret = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseSecret) return json({ error: "AI allowance service is not configured" }, 503);
+  if ((!supabaseUrl || !supabaseSecret) && !isDevelopmentBypass) return json({ error: "AI allowance service is not configured" }, 503);
 
-  const token = getBearerToken(request);
   if (!token) return json({ error: "Sign in to use AI suggestions" }, 401);
 
-  const admin = createClient(supabaseUrl, supabaseSecret, {
+  const admin = isDevelopmentBypass ? null : createClient(supabaseUrl!, supabaseSecret!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: authData, error: authError } = await admin.auth.getUser(token);
-  if (authError || !authData.user) return json({ error: "Your session has expired. Sign in again." }, 401);
+  let userId = "";
+  if (!isDevelopmentBypass) {
+    const { data: authData, error: authError } = await admin.auth.getUser(token);
+    if (authError || !authData.user) return json({ error: "Your session has expired. Sign in again." }, 401);
+    userId = authData.user.id;
+  }
 
   if (request.method === "GET") {
-    const { data, error } = await admin.rpc("get_ai_suggestion_usage", { p_user_id: authData.user.id });
+    const { data, error } = await admin.rpc("get_ai_suggestion_usage", { p_user_id: userId });
     if (error || !isUsage(data)) return json({ error: "Could not load AI suggestion usage" }, 500);
     return json({ usage: data });
   }
@@ -75,11 +103,22 @@ export default async (request: Request) => {
   if (diff.length > 100_000) return json({ error: "The git diff is too large" }, 413);
   if (context && context.length > 4_000) return json({ error: "The generation context is too large" }, 413);
 
-  const { data: reserved, error: reserveError } = await admin.rpc("reserve_ai_suggestion", { p_user_id: authData.user.id });
-  if (reserveError || !isUsage(reserved) || typeof (reserved as Reservation).allowed !== "boolean") {
-    return json({ error: "Could not reserve an AI suggestion" }, 500);
+  let reservation: Reservation;
+  if (isDevelopmentBypass) {
+    developmentUsed = Math.max(developmentUsed, localUsage);
+    const usage = developmentUsage();
+    reservation = { ...usage, allowed: usage.remaining > 0 };
+    if (reservation.allowed) {
+      developmentUsed += 1;
+      reservation = { ...reservation, ...developmentUsage(), allowed: true };
+    }
+  } else {
+    const { data: reserved, error: reserveError } = await admin.rpc("reserve_ai_suggestion", { p_user_id: userId });
+    if (reserveError || !isUsage(reserved) || typeof (reserved as Reservation).allowed !== "boolean") {
+      return json({ error: "Could not reserve an AI suggestion" }, 500);
+    }
+    reservation = reserved as Reservation;
   }
-  const reservation = reserved as Reservation;
   if (!reservation.allowed) return json({ error: "Monthly AI suggestion allowance used", code: "quota_exhausted", usage: reservation }, 429);
 
   try {
@@ -87,11 +126,15 @@ export default async (request: Request) => {
     return json({ ...result, usage: reservation });
   } catch (error) {
     console.error("Platform AI generation failed:", error instanceof Error ? error.message : error);
-    const { error: releaseError } = await admin.rpc("release_ai_suggestion", {
-      p_user_id: authData.user.id,
-      p_period_start: reservation.periodStart,
-    });
-    if (releaseError) console.error("Could not release AI reservation:", releaseError.message);
+    if (isDevelopmentBypass) {
+      developmentUsed = Math.max(0, developmentUsed - 1);
+    } else {
+      const { error: releaseError } = await admin.rpc("release_ai_suggestion", {
+        p_user_id: userId,
+        p_period_start: reservation.periodStart,
+      });
+      if (releaseError) console.error("Could not release AI reservation:", releaseError.message);
+    }
     return json({ error: "Platform AI providers are temporarily unavailable. This attempt was not counted." }, 502);
   }
 };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MdArrowForward, MdAutoAwesome, MdCheck, MdClose, MdContentCopy, MdDelete, MdKey, MdSave } from "react-icons/md";
 import { useSearchParams } from "react-router-dom";
 import type { AnalysisResult } from "../types";
@@ -25,7 +25,9 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
   const [showWriteDiff, setShowWriteDiff] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [aiNotice, setAiNotice] = useState<string | null>(null);
-  const { generateMessage, loading, hasApiKey, usage, error: generationError } = useLLM();
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiRequestInFlight = useRef(false);
+  const { generateMessage, hasApiKey, usage } = useLLM();
   const analyze = useMemo(() => debounce((value: string) => setResult(value.trim() ? analyzeCommit(value) : null), CONSTANTS.ANIMATION.DEBOUNCE_DELAY), []);
 
   useEffect(() => analyze(message), [message, analyze]);
@@ -35,6 +37,7 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
     setDrafts((current) => [{ id: crypto.randomUUID(), message, score: result.score, date: new Date().toISOString() }, ...current].slice(0, 50));
   };
   const runAi = async (action: "improve" | "generate") => {
+    if (aiRequestInFlight.current) return;
     setActionError(null);
     setAiNotice(null);
     if (!user) { setAuthOpen(true); return; }
@@ -45,15 +48,24 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
       setActionError("Paste the real git diff so the AI can ground the message in the code changes.");
       return;
     }
+    aiRequestInFlight.current = true;
+    setAiLoading(true);
     const context = action === "improve"
       ? `Improve this draft commit message using only the supplied diff as evidence: ${message.trim()}`
       : repositoryName ? `Repository: ${repositoryName}` : undefined;
-    const value = await generateMessage(diff, context);
-    if (value) {
-      setMessage(value);
-      setMode("write");
-      setShowWriteDiff(true);
-      setAiNotice(action === "improve" ? "Message improved from the supplied diff." : "Message generated from the supplied diff.");
+    try {
+      const value = await generateMessage(diff, context);
+      if (value) {
+        setMessage(value);
+        setMode("write");
+        setShowWriteDiff(true);
+        setAiNotice(action === "improve" ? "Message improved from the supplied diff." : "Message generated from the supplied diff.");
+      }
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "Unable to generate a commit message.");
+    } finally {
+      aiRequestInFlight.current = false;
+      setAiLoading(false);
     }
   };
   const setEditorMode = (nextMode: "write" | "diff") => {
@@ -84,10 +96,10 @@ export const Playground = ({ embedded = false, repositoryName }: PlaygroundProps
             <span>{!user ? "Sign in to unlock AI features" : usage?.remaining ? `${usage.remaining} free AI suggestions remaining` : hasApiKey ? "Personal provider ready · Groq → OpenRouter → Gemini" : "Monthly allowance used · add a personal provider key"}</span>
             {mode === "write" ? <div>
               {result && <button type="button" onClick={save}><MdSave /> Save draft</button>}
-              <button type="button" className="primary" onClick={() => runAi("improve")} disabled={loading}><MdAutoAwesome /> {loading ? "Improving..." : "Improve with AI"}</button>
-            </div> : <button type="button" className="primary" onClick={() => runAi("generate")} disabled={loading}><MdAutoAwesome /> {loading ? "Generating..." : "Generate from diff"}<MdArrowForward /></button>}
+              <button type="button" className="primary" onClick={() => runAi("improve")} disabled={aiLoading}><MdAutoAwesome /> {aiLoading ? "Improving..." : "Improve with AI"}</button>
+            </div> : <button type="button" className="primary" onClick={() => runAi("generate")} disabled={aiLoading}><MdAutoAwesome /> {aiLoading ? "Generating..." : "Generate from diff"}<MdArrowForward /></button>}
           </div>
-          {(actionError || generationError || aiNotice) && <div className={`workshop-ai-status ${actionError || generationError ? "is-error" : "is-success"}`} role={actionError || generationError ? "alert" : "status"}>{actionError || generationError || aiNotice}</div>}
+          {(actionError || aiNotice) && <div className={`workshop-ai-status ${actionError ? "is-error" : "is-success"}`} role={actionError ? "alert" : "status"}>{actionError || aiNotice}</div>}
           {user && !hasApiKey && <div className="workshop-provider-hint"><MdKey /><span><strong>Provider key required</strong>Open your account menu and choose AI providers. Keys remain stored per account in this browser.</span></div>}
         </div>
 

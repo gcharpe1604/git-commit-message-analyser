@@ -78,3 +78,33 @@ test("Netlify AI function releases the reservation when every provider fails", a
   assert.match(body.error, /not counted/i);
   assert.ok(calls.some((url) => url.includes("/rpc/release_ai_suggestion")));
 });
+
+test("local development bypass carries the allowance across function reloads", async () => {
+  process.env.NETLIFY_DEV = "true";
+  process.env.AI_DEV_BYPASS_TOKEN = "local-test-token";
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.includes("api.groq.com")) return Response.json({ choices: [{ message: { content: "fix(ai): persist local usage" } }] });
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  try {
+    const response = await handleAISuggestions(new Request("https://gitanalyzer.test/api/ai/suggestions", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer local-test-token",
+        "Content-Type": "application/json",
+        "X-Local-AI-Usage": "3",
+      },
+      body: JSON.stringify({ diff: "+ persist the local allowance" }),
+    }));
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.usage.used, 4);
+    assert.equal(body.usage.remaining, 11);
+  } finally {
+    delete process.env.NETLIFY_DEV;
+    delete process.env.AI_DEV_BYPASS_TOKEN;
+  }
+});
