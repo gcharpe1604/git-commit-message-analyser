@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MdArrowForward, MdClose, MdPerson, MdSource } from "react-icons/md";
 import { sanitizeInput } from "../utils/sanitize";
 
 interface InputSectionProps {
@@ -19,220 +20,76 @@ export const InputSection = ({
   inputRef,
 }: InputSectionProps) => {
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<"user" | "repo">("user");
+  const [mode, setMode] = useState<"user" | "repo">("repo");
+  const [validationError, setValidationError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const sanitized = sanitizeInput(input);
-
-    if (mode === "repo") {
-      // In repo mode: accept owner/repo shorthand or full URL
-      const repoUrl = sanitized.startsWith("http")
-        ? sanitized
-        : `https://github.com/${sanitized}`;
-      onAnalyze(repoUrl, "repo");
-    } else {
-      // In user mode: pass username directly
-      onAnalyze(sanitized, "user");
+  const submitValue = (value: string, targetMode = mode) => {
+    const sanitized = sanitizeInput(value);
+    if (!sanitized) {
+      setValidationError(`Enter a GitHub ${targetMode === "repo" ? "repository" : "username"} to continue.`);
+      return;
     }
+    setValidationError("");
+    const target = targetMode === "repo" && !sanitized.startsWith("http")
+      ? `https://github.com/${sanitized}`
+      : sanitized;
+    onAnalyze(target, targetMode);
   };
 
-  const placeholder = mode === "user"
-    ? "Enter GitHub username (e.g. torvalds)"
-    : "Enter owner/repo or URL (e.g. torvalds/linux)";
-
   return (
-    <div className="animate-in" style={{ marginBottom: "3rem" }}>
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-          maxWidth: "600px",
-          margin: "0 auto",
-        }}
-      >
-        <div style={{ alignSelf: "center", display: "flex", background: "var(--bg-panel)", borderRadius: "8px", padding: "0.25rem", border: "1px solid var(--border-subtle)" }}>
-          <button
-            type="button"
-            onClick={() => setMode("user")}
-            style={{
-              background: mode === "user" ? "var(--bg-page)" : "transparent",
-              color: mode === "user" ? "var(--text-primary)" : "var(--text-secondary)",
-              border: "none",
-              borderRadius: "6px",
-              padding: "0.25rem 1rem",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              boxShadow: mode === "user" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
-              transition: "all 0.2s"
-            }}
-          >
-            User
+    <section className="analyzer-entry" aria-labelledby="analyzer-heading">
+      <div className="entry-heading">
+        <span>Start an analysis</span>
+        <h2 id="analyzer-heading">Bring your Git history into focus.</h2>
+      </div>
+
+      <form className="analysis-form" onSubmit={(event) => { event.preventDefault(); submitValue(input); }} noValidate>
+        <div className="mode-switch" aria-label="Analysis target">
+          <button type="button" className={mode === "repo" ? "active" : ""} onClick={() => { setMode("repo"); setValidationError(""); }} aria-pressed={mode === "repo"}>
+            <MdSource /> Repository
           </button>
-          <button
-            type="button"
-            onClick={() => setMode("repo")}
-            style={{
-              background: mode === "repo" ? "var(--bg-page)" : "transparent",
-              color: mode === "repo" ? "var(--text-primary)" : "var(--text-secondary)",
-              border: "none",
-              borderRadius: "6px",
-              padding: "0.25rem 1rem",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              boxShadow: mode === "repo" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
-              transition: "all 0.2s"
-            }}
-          >
-            Repository
+          <button type="button" className={mode === "user" ? "active" : ""} onClick={() => { setMode("user"); setValidationError(""); }} aria-pressed={mode === "user"}>
+            <MdPerson /> Developer
           </button>
         </div>
-        <div className="input-form-row" style={{ display: "flex", gap: "0.75rem" }}>
-        <div className="input-group" style={{ flex: 1 }}>
-          <div
-            style={{
-              color: "var(--text-tertiary)",
-              paddingLeft: "0.5rem",
-              display: "flex",
-            }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </div>
+
+        <label className={`analysis-field ${validationError ? "has-error" : ""}`}>
+          <span className="field-prefix">github.com/</span>
           <input
             ref={inputRef}
             type="text"
-            placeholder={placeholder}
+            placeholder={mode === "repo" ? "owner/repository" : "username"}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(event) => { setInput(event.target.value); if (validationError) setValidationError(""); }}
             disabled={isLoading}
-            className="input-field"
+            aria-invalid={Boolean(validationError)}
+            aria-describedby={validationError ? "analysis-error" : "analysis-help"}
+            autoComplete="off"
           />
-        </div>
-        <button
-          type="submit"
-          className="btn-primary"
-          disabled={isLoading}
-          style={{ whiteSpace: "nowrap" }}
-        >
-          {isLoading ? "Analyzing..." : "Analyze Repository"}
-        </button>
-        </div>
-        {/* Helper text */}
-        <div style={{ textAlign: "center", fontSize: "0.78rem", color: "var(--text-tertiary)", marginTop: "-0.25rem" }}>
-          Enter a GitHub username (e.g. <strong style={{ color: "var(--text-secondary)" }}>torvalds</strong>) or repository (e.g. <strong style={{ color: "var(--text-secondary)" }}>owner/repo</strong>)
-        </div>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? "Reading history…" : "Analyze"}<MdArrowForward />
+          </button>
+        </label>
+        <p id={validationError ? "analysis-error" : "analysis-help"} className={validationError ? "field-error" : "field-help"} role={validationError ? "alert" : undefined}>
+          {validationError || (mode === "repo" ? "Public repositories work instantly — no GitHub sign-in required." : "Choose a public profile, then select one of its repositories.")}
+        </p>
       </form>
 
-      {recentSearches.length > 0 && (
-        <div style={{ marginTop: "1rem" }}>
-          <div
-            className="recent-searches-container"
-            style={{
-              display: "flex",
-              gap: "0.5rem",
-              flexWrap: "wrap",
-              alignItems: "center",
-            }}
-          >
-            <span
-              style={{ fontSize: "0.75rem", color: "var(--text-tertiary)" }}
-            >
-              Recent Searches:
-            </span>
-            {recentSearches.map((search, idx) => {
-              const searchMode = search.includes("/") ? "repo" : "user";
-              return (
-                <div key={idx} className="recent-search-item">
-                  <button
-                    onClick={() => onAnalyze(search, searchMode)}
-                    className="recent-search-btn"
-                  >
-                    {search}
-                  </button>
-                  {onRemoveRecent && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveRecent(search);
-                      }}
-                      className="recent-search-remove"
-                      aria-label={`Remove ${search} from recent searches`}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-            {onClearHistory && recentSearches.length > 0 && (
-              <button
-                onClick={onClearHistory}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--status-bad)",
-                  fontSize: "0.75rem",
-                  cursor: "pointer",
-                  marginLeft: "auto",
-                  opacity: 0.8,
-                  fontWeight: 600,
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.8")}
-              >
-                Clear All
-              </button>
-            )}
+      <div className="entry-footer">
+        <button className="example-link" type="button" onClick={() => submitValue("facebook/react", "repo")}>Try facebook/react <MdArrowForward /></button>
+        {recentSearches.filter(Boolean).length > 0 && (
+          <div className="recent-searches" aria-label="Recent searches">
+            <span>Recent</span>
+            {recentSearches.filter(Boolean).map((search) => (
+              <div className="recent-pill" key={search}>
+                <button type="button" onClick={() => submitValue(search, search.includes("/") ? "repo" : "user")}>{search}</button>
+                {onRemoveRecent && <button type="button" onClick={() => onRemoveRecent(search)} aria-label={`Remove ${search}`}><MdClose /></button>}
+              </div>
+            ))}
+            {onClearHistory && <button type="button" className="clear-recent" onClick={onClearHistory}>Clear</button>}
           </div>
-        </div>
-      )}
-
-      {recentSearches.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "1rem",
-            fontSize: "0.85rem",
-            color: "var(--text-tertiary)",
-          }}
-        >
-          Try{" "}
-          <span
-            style={{
-              color: "var(--text-secondary)",
-              borderBottom: "1px dotted var(--text-secondary)",
-            }}
-          >
-            facebook/react
-          </span>{" "}
-          or{" "}
-          <span
-            style={{
-              color: "var(--text-secondary)",
-              borderBottom: "1px dotted var(--text-secondary)",
-            }}
-          >
-            torvalds
-          </span>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </section>
   );
 };
