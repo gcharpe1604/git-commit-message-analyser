@@ -23,17 +23,17 @@ Actively developed. Open to feedback and improvements.
 
 GitAnalyzer fetches commit data from any public GitHub user or repository and applies a rule-based scoring system to evaluate commit message quality. It surfaces common problems — vague language, missing structure, inconsistent style — and gives concrete suggestions to fix them.
 
-Unlike generic linters, GitAnalyzer works at the repository level. It looks at patterns across all commits, not just a single message. It identifies a developer's commit style, flags systemic issues, and provides ranked suggestions. For logged-in users, it also offers AI-powered commit message improvements and saves analysis history across sessions.
+Unlike generic linters, GitAnalyzer works at the repository level. It looks at patterns across all commits, not just a single message. It identifies a developer's commit style, flags systemic issues, and provides ranked suggestions. Signed-in users can also generate a commit message from a pasted git diff and sync analysis history across sessions.
 
 ---
 
 ## Key Features
 
-- **Commit scoring (0–10)** — Scores commit messages based on clarity, structure, and consistency
+- **Commit scoring (0–10)** — Uses a weighted, explainable rubric across format, clarity, style, context, and hygiene
 
 - **Sub-score breakdown** — Three sub-metrics displayed alongside the main score:
-  - **Clarity** — penalizes messages that start with vague terms like `fix`, `update`, `wip`, or `misc`
-  - **Structure** — measures what percentage of commits use typed prefixes (`feat:`, `fix:`, `chore:`, etc.)
+  - **Clarity** — measures specificity, useful subject length, and placeholder language
+  - **Structure** — measures valid Conventional Commit headers, types, and scopes
   - **Consistency** — evaluates how uniform commit quality is across the repository using score variance
 
 - **Confidence indicator** — If a repository has fewer than 20 commits, the dashboard shows a low-confidence warning so you know the data is limited
@@ -50,13 +50,15 @@ Unlike generic linters, GitAnalyzer works at the repository level. It looks at p
 
 - **Dashboard visualizations** — Commit time distribution chart, commit type breakdown, score distribution bar, and history timeline
 
-- **AI commit suggestions (logged-in users only)** — Logged-in users can request an AI-rewritten version of any commit message. The AI strictly follows Conventional Commits and enforces imperative mood. This feature is gated to manage API usage and provide a personalized experience. Supported providers: Gemini, OpenRouter, Groq (with automatic fallback)
+- **Shareable routes** — The analyzer, developer repository index, repository reports, and commit workshop have stable browser URLs
 
-- **Persistent analysis history** — Logged-in users have their repository analyses saved to Supabase. Guest sessions use localStorage
+- **Diff-grounded AI generation (logged-in users only)** — AI generation is available only after a user signs in, adds a provider key, and supplies a git diff. Supported providers: Gemini, OpenRouter, and Groq
 
-- **Authentication** — Email/password sign-up and sign-in via Supabase Auth. Username is collected at registration and displayed in the navbar
+- **Persistent analysis history** — Signed-in users have repository analyses saved to Supabase. Guest analyses are not added to history
 
-- **Copy Summary** — One-click button to copy a plain-text analysis summary to the clipboard
+- **Authentication** — Sign in or create an account with GitHub or Google through Supabase Auth
+
+- **Detailed PDF reports** — Download one polished report containing the score summary, quality dimensions, priority findings, recommendations, type distribution, and commit appendix
 
 ---
 
@@ -67,22 +69,24 @@ Unlike generic linters, GitAnalyzer works at the repository level. It looks at p
 3. **Messages are analyzed** — Each commit message is scored individually using the rule-based engine
 4. **Insights are computed** — Sub-scores, developer type, top issues, and suggestions are derived from aggregate patterns
 5. **Dashboard renders** — Results are displayed across score cards, charts, and feedback sections
-6. **AI suggestions** (logged-in only) — Users can click "Improve with AI" on any commit to get a rewritten message
+6. **AI generation** (logged-in only) — Users paste a git diff in the Playground before requesting a generated commit message
 7. **History is saved** — Logged-in users have the analysis persisted to their Supabase profile for future reference
 
 ---
 
 ## Scoring System
 
-Each commit message starts at a score of 10. Points are deducted for:
+Each commit message is evaluated on a 100-point weighted rubric and presented as a 0–10 score:
 
-| Rule | Deduction |
-|------|-----------|
-| Missing Conventional Commits prefix (e.g. `feat:`) | −2 |
-| Subject line shorter than 10 characters | −2 |
-| Contains vague words (`stuff`, `things`, `wip`, `misc`) | −2 |
-| Subject does not start with an imperative verb | −1 |
-| Subject ends with a period | −1 |
+| Dimension | Weight | What it checks |
+|------|------:|-----------|
+| Format | 20 | Valid Conventional Commit syntax, type, and optional scope |
+| Clarity | 30 | Specificity, useful length, descriptive detail, and placeholder language |
+| Style | 20 | Imperative mood, casing, punctuation, and readable phrasing |
+| Context | 15 | Whether the subject identifies a meaningful action and whether complex changes include a body |
+| Hygiene | 15 | Header length, whitespace, and subject/body separation |
+
+Git-generated merge and revert messages are recognized separately so normal repository maintenance is not treated as malformed work.
 
 **Score interpretation:**
 - `8–10` → Good
@@ -93,10 +97,10 @@ Each commit message starts at a score of 10. Points are deducted for:
 
 ```
 ❌  fix bug
-    Score: 4/10 — missing prefix, too short, non-specific subject
+    Score: 4.7/10 — missing prefix, too short, placeholder subject
 
-✅  fix(auth): remove null check in login token validator
-    Score: 10/10 — typed prefix, imperative verb, specific subject, correct length
+✅  feat(auth): prevent duplicate token refresh
+    Score: 9.5/10 — valid structure, imperative wording, specific subject
 ```
 
 ---
@@ -111,7 +115,8 @@ Each commit message starts at a score of 10. Points are deducted for:
 │  ├── InputSection   → user/repo entry       │
 │  ├── SummarySection → scores + insights     │
 │  ├── CommitList     → per-commit breakdown  │
-│  ├── Playground     → AI suggestion editor  │
+│  ├── Playground     → scoring + diff generation│
+│  ├── ReportDownload → detailed PDF report   │
 │  └── HistorySidebar → saved analyses        │
 └──────────────┬──────────────────────────────┘
                │
@@ -131,13 +136,13 @@ Each commit message starts at a score of 10. Points are deducted for:
     ┌──────────▼──────────────┐
     │  AI Layer (optional)    │
     │  llmService.ts          │
-    │  Gemini → OpenRouter    │
-    │          → Groq         │
+    │  User-selected keys     │
+    │  Groq / OpenRouter / Gemini│
     └──────────┬──────────────┘
                │
     ┌──────────▼──────────────┐
     │  Supabase               │
-    │  - Auth (email/password)│
+    │  - OAuth authentication │
     │  - Analysis persistence │
     └─────────────────────────┘
 ```
@@ -163,11 +168,13 @@ src/
 
 | Layer | Technology |
 |---|---|
-| Framework | React 18 + TypeScript |
+| Framework | React 19 + TypeScript |
+| Routing | React Router |
 | Build Tool | Vite |
 | Styling | Vanilla CSS with CSS custom properties |
 | Data Source | GitHub REST API v3 |
 | AI Providers | Google Gemini, OpenRouter, Groq |
+| PDF Reports | jsPDF |
 | Auth + Database | Supabase |
 | Deployment | Netlify |
 
@@ -187,7 +194,7 @@ src/
 
 - Node.js ≥ 18
 - A [Supabase](https://supabase.com) project (for auth and history)
-- Optional: API keys for Gemini, OpenRouter, or Groq (for AI suggestions)
+- Optional: an API key for Gemini, OpenRouter, or Groq, added after sign-in
 
 ### Steps
 
@@ -217,13 +224,9 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 # GitHub token (optional — increases rate limit from 60 to 5000 req/hr)
 VITE_GITHUB_TOKEN=your_github_token
 
-# AI providers (optional — at least one required for AI suggestions)
-VITE_GEMINI_API_KEY=your_gemini_key
-VITE_OPENROUTER_API_KEY=your_openrouter_key
-VITE_GROQ_API_KEY=your_groq_key
 ```
 
-> The app works without AI keys — scoring and insights are fully rule-based. AI suggestions are only activated when at least one provider key is configured and the user is signed in.
+> The app works without AI keys — scoring and insights are fully rule-based. Provider keys are added from the signed-in account menu and remain in that browser, separated by account.
 
 ---
 

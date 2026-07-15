@@ -1,7 +1,9 @@
 import { MdAutoGraph, MdBolt, MdCheckCircle, MdInsights, MdTimeline } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import type { RefObject } from "react";
+import { useState, type RefObject } from "react";
 import type { RepoStats } from "../../types";
+import { AuthModal } from "../AuthModal";
+import { FeatureUnlockNotice } from "../FeatureUnlockNotice";
 import { InputSection } from "../InputSection";
 
 interface LandingPageProps {
@@ -18,6 +20,7 @@ interface LandingPageProps {
 
 export const LandingPage = ({ userSignedIn, historyItems, loading, recentSearches, inputRef, onAnalyze, onOpenHistory, onRemoveRecent, onClearRecent }: LandingPageProps) => {
   const navigate = useNavigate();
+  const [authOpen, setAuthOpen] = useState(false);
   return <div className="landing-page animate-in">
     <section className="landing-hero" id="overview">
       <div className="hero-copy">
@@ -36,6 +39,7 @@ export const LandingPage = ({ userSignedIn, historyItems, loading, recentSearche
 
     <div id="analyzer">
       <InputSection onAnalyze={onAnalyze} isLoading={loading} recentSearches={recentSearches} onRemoveRecent={onRemoveRecent} onClearHistory={onClearRecent} inputRef={inputRef} />
+      {!userSignedIn && <FeatureUnlockNotice context="home" />}
     </div>
 
     <section className="landing-section" id="how-it-works">
@@ -52,11 +56,12 @@ export const LandingPage = ({ userSignedIn, historyItems, loading, recentSearche
       <div className="section-heading"><span>Built for the work</span><h2>The signal, without the dashboard theatre.</h2></div>
       <div className="feature-grid">
         <FeatureCard icon={<MdBolt />} title="Fast repository analysis" desc="Review recent commits and see exactly where message quality is slipping." onClick={() => inputRef.current?.focus()} />
-        <FeatureCard icon={<MdTimeline />} title="History that tells a story" desc={userSignedIn ? "Return to synced reports and keep improving the standard." : "Sign in to sync repository reports and revisit them across sessions."} onClick={userSignedIn ? onOpenHistory : undefined} />
+        <FeatureCard icon={<MdTimeline />} title="History that tells a story" desc={userSignedIn ? "Return to synced reports and keep improving the standard." : "Sign in to sync repository reports and revisit them across sessions."} onClick={userSignedIn ? onOpenHistory : () => setAuthOpen(true)} />
         <FeatureCard icon={<MdInsights />} title="Try a real example" desc="Open a familiar repository and explore the complete report experience." onClick={() => onAnalyze("facebook/react", "repo")} />
       </div>
     </section>
     <footer className="landing-footer"><span>GitAnalyzer</span><p>Built for clearer code histories.</p><button onClick={() => inputRef.current?.focus()}>Analyze a repository <span>↗</span></button></footer>
+    <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} variant="featureAccess" />
   </div>;
 };
 
