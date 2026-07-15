@@ -14,6 +14,7 @@ interface Reservation extends Usage {
 }
 
 let developmentUsed = 0;
+const UNLIMITED_AI_EMAIL = "govind.charpe16@gmail.com";
 
 const developmentUsage = (): Usage => {
   const periodStart = new Date().toISOString().slice(0, 7);
@@ -27,6 +28,8 @@ const developmentUsage = (): Usage => {
     resetsAt: resetDate.toISOString(),
   };
 };
+
+const unlimitedUsage = (): Usage => ({ ...developmentUsage(), used: 0, limit: 15, remaining: 15 });
 
 const json = (body: unknown, status = 200) => Response.json(body, {
   status,
@@ -72,13 +75,16 @@ export default async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   let userId = "";
+  let hasUnlimitedAllowance = false;
   if (!isDevelopmentBypass) {
     const { data: authData, error: authError } = await admin.auth.getUser(token);
     if (authError || !authData.user) return json({ error: "Your session has expired. Sign in again." }, 401);
     userId = authData.user.id;
+    hasUnlimitedAllowance = authData.user.email?.toLowerCase() === UNLIMITED_AI_EMAIL;
   }
 
   if (request.method === "GET") {
+    if (hasUnlimitedAllowance) return json({ usage: unlimitedUsage() });
     const { data, error } = await admin.rpc("get_ai_suggestion_usage", { p_user_id: userId });
     if (error || !isUsage(data)) return json({ error: "Could not load AI suggestion usage" }, 500);
     return json({ usage: data });
@@ -112,6 +118,8 @@ export default async (request: Request) => {
       developmentUsed += 1;
       reservation = { ...reservation, ...developmentUsage(), allowed: true };
     }
+  } else if (hasUnlimitedAllowance) {
+    reservation = { ...unlimitedUsage(), allowed: true };
   } else {
     const { data: reserved, error: reserveError } = await admin.rpc("reserve_ai_suggestion", { p_user_id: userId });
     if (reserveError || !isUsage(reserved) || typeof (reserved as Reservation).allowed !== "boolean") {
@@ -128,7 +136,7 @@ export default async (request: Request) => {
     console.error("Platform AI generation failed:", error instanceof Error ? error.message : error);
     if (isDevelopmentBypass) {
       developmentUsed = Math.max(0, developmentUsed - 1);
-    } else {
+    } else if (!hasUnlimitedAllowance) {
       const { error: releaseError } = await admin.rpc("release_ai_suggestion", {
         p_user_id: userId,
         p_period_start: reservation.periodStart,

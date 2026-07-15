@@ -79,6 +79,28 @@ test("Netlify AI function releases the reservation when every provider fails", a
   assert.ok(calls.some((url) => url.includes("/rpc/release_ai_suggestion")));
 });
 
+test("Netlify AI function does not consume quota for the configured unlimited email", async () => {
+  const calls: string[] = [];
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url.endsWith("/auth/v1/user")) return Response.json({ id: "11111111-1111-1111-1111-111111111111", email: "govind.charpe16@gmail.com" });
+    if (url.includes("api.groq.com")) return Response.json({ choices: [{ message: { content: "fix(ai): allow unlimited owner suggestions" } }] });
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  const response = await handleAISuggestions(new Request("https://gitanalyzer.test/api/ai/suggestions", {
+    method: "POST",
+    headers: { Authorization: "Bearer owner-token", "Content-Type": "application/json" },
+    body: JSON.stringify({ diff: "+ allow owner suggestions" }),
+  }));
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.usage.remaining, 15);
+  assert.equal(calls.some((url) => url.includes("reserve_ai_suggestion")), false);
+});
+
 test("local development bypass carries the allowance across function reloads", async () => {
   process.env.NETLIFY_DEV = "true";
   process.env.AI_DEV_BYPASS_TOKEN = "local-test-token";
