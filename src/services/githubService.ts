@@ -160,14 +160,3 @@ export const fetchUserRepos = async (username: string): Promise<import('../types
 
   return await response.json();
 };
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const fetchCommitDetails = async (url: string): Promise<any> => {
-  const response = await fetch(url, { headers: getHeaders() });
-  
-  if (!response.ok) {
-    throw new Error("Failed to fetch commit details");
-  }
-
-  return await response.json();
-};

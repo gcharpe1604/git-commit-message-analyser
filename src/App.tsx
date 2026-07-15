@@ -1,35 +1,37 @@
-import { FcFlashOn } from "react-icons/fc";
-import { FaGamepad } from "react-icons/fa";
-import { MdInsights } from "react-icons/md";
-import { MdHistory, MdMenu, MdClose } from "react-icons/md";
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useMatch, useNavigate } from "react-router-dom";
+import { MdErrorOutline } from "react-icons/md";
 import "./App.css";
-import { InputSection } from "./components/InputSection";
-import { CommitList } from "./components/CommitList";
-import { SummarySection } from "./components/SummarySection";
+import { AppNavbar } from "./components/AppNavbar";
 import { HistorySidebar } from "./components/HistorySidebar";
-import { SettingsModal } from "./components/SettingsModal";
-import { Playground } from "./components/Playground";
-import { ExportButton } from "./components/ExportButton";
-import { UserRepoList } from "./components/UserRepoList";
-import { AuthButton } from "./components/AuthButton";
 import { MobileSidebar } from "./components/MobileSidebar";
-import { fetchCommits, fetchUserRepos } from "./services/githubService";
-import { saveAnalysis, getHistory } from "./services/storageService";
-import { saveAnalysisToCloud } from "./services/analysisService";
-import { useAuth } from "./hooks/useAuth";
-import { calculateRepoStats } from "./utils/simpleAnalyzer";
-import type { Commit, RepoStats, Repository } from "./types";
-import { useLocalStorage } from "./hooks/useLocalStorage";
+import { SettingsModal } from "./components/SettingsModal";
 import { CONSTANTS } from "./constants";
-import { Result, Badge } from "antd";
-import { Loader } from "./components/Loader";
+import { useAuth } from "./hooks/useAuth";
+import { useLocalStorage } from "./hooks/useLocalStorage";
+import { fetchUserAnalyses, saveAnalysisToCloud } from "./services/analysisService";
+import { fetchCommits, fetchUserRepos } from "./services/githubService";
+import type { Commit, RepoStats, Repository } from "./types";
+import { calculateRepoStats } from "./utils/simpleAnalyzer";
+
+const Playground = lazy(() => import("./components/Playground").then((module) => ({ default: module.Playground })));
+const AnalysisPage = lazy(() => import("./components/pages/AnalysisPage").then((module) => ({ default: module.AnalysisPage })));
+const DeveloperReposPage = lazy(() => import("./components/pages/DeveloperReposPage").then((module) => ({ default: module.DeveloperReposPage })));
+const LandingPage = lazy(() => import("./components/pages/LandingPage").then((module) => ({ default: module.LandingPage })));
+
+const repoPathFromInput = (input: string) => input.trim().replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
 
 function App() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const analysisMatch = useMatch("/analysis/:owner/:repo");
+  const developerMatch = useMatch("/developers/:username");
+  const routedRepo = analysisMatch ? `${analysisMatch.params.owner}/${analysisMatch.params.repo}` : null;
+  const routedUser = developerMatch?.params.username ?? null;
   const [commits, setCommits] = useState<Commit[]>([]);
   const [userRepos, setUserRepos] = useState<Repository[]>([]);
-  const [searchedUser, setSearchedUser] = useState<string | null>(null);
+  const [loadedDeveloper, setLoadedDeveloper] = useState<string | null>(null);
   const [stats, setStats] = useState<RepoStats | null>(null);
   const [, setApiPage] = useState(1);
   const [fetchingMore, setFetchingMore] = useState(false);
@@ -38,639 +40,121 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"analyze" | "playground">(
-    "analyze",
-  );
-  const [viewMode, setViewMode] = useState<"input" | "repoList" | "analysis">(
-    "input",
-  );
   const [historyItems, setHistoryItems] = useState<RepoStats[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const loadingTarget = useRef<string | null>(null);
+  const [recentSearches, setRecentSearches] = useLocalStorage<string[]>(CONSTANTS.STORAGE.RECENT_SEARCHES_KEY, []);
 
   useEffect(() => {
-    setHistoryItems(getHistory());
+    let active = true;
+    if (!user) {
+      queueMicrotask(() => { if (active) setHistoryItems([]); });
+      return () => { active = false; };
+    }
+    fetchUserAnalyses().then((items) => {
+      if (!active) return;
+      setHistoryItems(items.map((item) => ({ repoName: item.repo_name, averageScore: item.avg_score, totalCommits: item.total_commits, goodCommits: 0, warningCommits: 0, badCommits: 0, lastAnalyzed: item.created_at || new Date().toISOString() })));
+    });
+    return () => { active = false; };
+  }, [user]);
+
+  const loadRepository = useCallback(async (repoName: string) => {
+    if (loadingTarget.current === `repo:${repoName}`) return;
+    loadingTarget.current = `repo:${repoName}`;
+    setLoading(true);
+    setError(null);
+    setApiPage(1);
+    setUserRepos([]);
+    try {
+      const { commits: fetchedCommits, totalCount } = await fetchCommits(`https://github.com/${repoName}`, 1);
+      const newStats = calculateRepoStats(fetchedCommits, repoName, totalCount);
+      setCommits(fetchedCommits);
+      setStats(newStats);
+      if (user && await saveAnalysisToCloud(repoName, newStats.averageScore, newStats.totalCommits)) {
+        setHistoryItems((items) => [newStats, ...items.filter((item) => item.repoName !== repoName)]);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "An unknown error occurred");
+    } finally {
+      setLoading(false);
+      loadingTarget.current = null;
+    }
+  }, [user]);
+
+  const loadDeveloper = useCallback(async (username: string) => {
+    if (loadingTarget.current === `user:${username}`) return;
+    loadingTarget.current = `user:${username}`;
+    setLoading(true);
+    setError(null);
+    setStats(null);
+    setCommits([]);
+    try {
+      setUserRepos(await fetchUserRepos(username));
+      setLoadedDeveloper(username);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "An unknown error occurred");
+    } finally {
+      setLoading(false);
+      loadingTarget.current = null;
+    }
   }, []);
 
-  const [recentSearches, setRecentSearches] = useLocalStorage<string[]>(
-    CONSTANTS.STORAGE.RECENT_SEARCHES_KEY,
-    [],
-  );
+  useEffect(() => {
+    if (routedRepo && stats?.repoName !== routedRepo) queueMicrotask(() => void loadRepository(routedRepo));
+  }, [loadRepository, routedRepo, stats?.repoName]);
 
-  const addToRecentSearches = (input: string) => {
-    setRecentSearches((prev) => {
-      const newSearches = [input, ...prev.filter((s) => s !== input)].slice(
-        0,
-        CONSTANTS.STORAGE.MAX_RECENT_SEARCHES,
-      );
-      return newSearches;
-    });
+  useEffect(() => {
+    if (routedUser && loadedDeveloper !== routedUser) queueMicrotask(() => void loadDeveloper(routedUser));
+  }, [loadDeveloper, loadedDeveloper, routedUser]);
+
+  const addRecent = (input: string) => setRecentSearches((current) => [input, ...current.filter((item) => item !== input)].slice(0, CONSTANTS.STORAGE.MAX_RECENT_SEARCHES));
+  const openRepository = (input: string) => {
+    const repo = repoPathFromInput(input);
+    const [owner, name] = repo.split("/");
+    if (!owner || !name) { setError("Enter a repository as owner/name or paste its GitHub URL."); return; }
+    navigate(`/analysis/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
   };
-
-  const removeFromRecentSearches = (input: string) => {
-    setRecentSearches((prev) => prev.filter((s) => s !== input));
+  const handleInputSubmit = (input: string, mode: "user" | "repo") => {
+    if (!input.trim()) { setError("Please enter a GitHub username or repository URL"); return; }
+    const label = repoPathFromInput(input);
+    addRecent(label);
+    if (mode === "repo") openRepository(label);
+    else navigate(`/developers/${encodeURIComponent(input.trim())}`);
   };
-
-  const clearHistory = () => {
-    setRecentSearches([]);
-  };
-
-  const analyzeRepo = async (url: string) => {
-    setLoading(true);
-    setError(null);
-    setApiPage(1);
-    setViewMode("analysis");
-
-    try {
-      const { commits: fetchedCommits, totalCount } = await fetchCommits(
-        url,
-        1,
-      );
-      setCommits(fetchedCommits);
-
-      const repoName = url.split("github.com/")[1] || url;
-      const newStats = calculateRepoStats(fetchedCommits, repoName, totalCount);
-      setStats(newStats);
-      saveAnalysis(newStats);
-      setHistoryItems(getHistory());
-
-      // Also save to Supabase if logged in (lightweight summary only)
-      if (user) {
-        saveAnalysisToCloud(
-          user.id,
-          repoName,
-          newStats.averageScore,
-          newStats.totalCommits
-        ).catch((err) => console.warn('Cloud save failed:', err));
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInputSubmit = async (input: string, mode: "user" | "repo") => {
-    if (!input.trim()) {
-      setError("Please enter a GitHub username or repository URL");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setCommits([]);
-    setStats(null);
-    setUserRepos([]);
-    setSearchedUser(null);
-
-    try {
-      // Save a clean label to recent searches — strip full GitHub URL prefix
-      // so "https://github.com/torvalds/linux" is stored as "torvalds/linux"
-      const recentLabel = input.startsWith("https://github.com/")
-        ? input.replace("https://github.com/", "")
-        : input;
-      addToRecentSearches(recentLabel);
-
-
-      if (mode === "repo") {
-        await analyzeRepo(input);
-      } else {
-        setSearchedUser(input);
-        const repos = await fetchUserRepos(input);
-        setUserRepos(repos);
-        setViewMode("repoList");
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLoadMoreCommits = async (targetApiPage: number) => {
+  const handleLoadMore = async (targetApiPage: number) => {
     if (!stats || fetchingMore) return;
-
     setFetchingMore(true);
     try {
-      const url = `https://github.com/${stats.repoName}`;
-      const { commits: newCommits } = await fetchCommits(url, targetApiPage);
-
-      if (newCommits.length > 0) {
-        setCommits((prev) => {
-          const existingShas = new Set(prev.map(c => c.sha));
-          const uniqueNew = newCommits.filter(c => !existingShas.has(c.sha));
-          return [...prev, ...uniqueNew];
-        });
-        setApiPage(targetApiPage);
-      }
-    } catch (err) {
-      console.error("Failed to fetch more commits:", err);
-    } finally {
-      setFetchingMore(false);
-    }
+      const { commits: nextCommits } = await fetchCommits(`https://github.com/${stats.repoName}`, targetApiPage);
+      setCommits((current) => {
+        const existing = new Set(current.map((commit) => commit.sha));
+        return [...current, ...nextCommits.filter((commit) => !existing.has(commit.sha))];
+      });
+      setApiPage(targetApiPage);
+    } finally { setFetchingMore(false); }
   };
-
-
-  const handleReset = () => {
-    setViewMode("input");
-    setCommits([]);
-    setStats(null);
-    setApiPage(1);
-    setUserRepos([]);
-    setError(null);
+  const goHome = () => { setError(null); navigate("/"); };
+  const focusAnalyzer = () => {
+    navigate("/");
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
   };
+  const viewMode = analysisMatch ? "analysis" : developerMatch ? "repoList" : location.pathname === "/workshop" ? "playground" : "input";
 
-  const handleBack = () => {
-    if (userRepos.length > 0) {
-      setViewMode("repoList");
-      setCommits([]);
-      setStats(null);
-    } else {
-      handleReset();
-    }
-  };
-
-  return (
-    <div className="container">
-      <header
-        className="app-header"
-        style={{
-          position: "sticky",
-          top: "1.5rem",
-          zIndex: 100,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "0.75rem 1.5rem",
-          marginBottom: "4rem",
-          background: "color-mix(in srgb, var(--bg-panel) 80%, transparent)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid var(--border-subtle)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "0 10px 30px -10px rgba(0, 0, 0, 0.3)",
-          transition: "all 0.3s ease",
-        }}
-      >
-        <div
-          onClick={handleReset}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              background: "var(--text-primary)",
-              borderRadius: "6px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--bg-page)",
-              fontWeight: "bold",
-              fontSize: "1.2rem",
-            }}
-          >
-            G
-          </div>
-          <span
-            style={{
-              fontWeight: 600,
-              fontSize: "1.1rem",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            GitAnalyzer
-          </span>
-        </div>
-
-        <button 
-          className="mobile-menu-btn" 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          aria-label="Toggle mobile menu"
-        >
-          {isMobileMenuOpen ? <MdClose /> : <MdMenu />}
-        </button>
-
-        <div className="app-header-controls desktop-only" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <button
-            onClick={() => setShowHistory(true)}
-            className="btn-secondary"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              padding: "0.5rem 1rem",
-            }}
-            aria-label="View Analysis History"
-          >
-            <MdHistory size={18} /> History
-            {historyItems.length > 0 && (
-              <Badge 
-                count={historyItems.length} 
-                size="small" 
-                color="var(--accent-primary)" 
-                style={{ marginLeft: '4px', boxShadow: 'none' }} 
-              />
-            )}
-          </button>
-          <AuthButton onOpenSettings={() => setShowSettings(true)} />
-        </div>
-      </header>
-
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-      />
-
-      <main>
-        {error ? (
-          <div className="animate-in" style={{ padding: "4rem 2rem", background: "var(--bg-panel)", borderRadius: "1rem", marginTop: "2rem" }}>
-            <Result
-              status="error"
-              title={<span style={{ color: "var(--text-primary)" }}>Failed to fetch data</span>}
-              subTitle={<span style={{ color: "var(--text-secondary)" }}>{error.includes("rate limit") ? "You may have hit GitHub rate limits. Please try again later or add an API token." : error}</span>}
-              extra={[
-                <button className="btn-primary" key="retry" onClick={handleReset}>
-                  Try Again
-                </button>,
-              ]}
-            />
-          </div>
-        ) : (
-          <>
-            {viewMode === "input" && (
-          <div className="animate-in">
-            {historyItems.length > 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginBottom: "4rem",
-                  maxWidth: "600px",
-                  margin: "0 auto 4rem auto",
-                }}
-              >
-                <h1
-                  className="welcome-title"
-                  style={{
-                    fontSize: "3rem",
-                    fontWeight: 800,
-                    marginBottom: "1rem",
-                    color: "var(--text-primary)",
-                  }}
-                >
-                  Welcome back
-                </h1>
-                <div
-                  className="panel"
-                  style={{
-                    padding: "1.5rem",
-                    marginBottom: "1.5rem",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      color: "var(--text-secondary)",
-                      fontSize: "0.9rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Last Analyzed
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "1.25rem",
-                      fontWeight: 600,
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {historyItems[0].repoName}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "2rem",
-                      fontWeight: 700,
-                      color: "var(--status-good)",
-                    }}
-                  >
-                    {historyItems[0].averageScore.toFixed(1)}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    justifyContent: "center",
-                  }}
-                >
-                  <button
-                    className="btn-primary"
-                    style={{ padding: "0.75rem 1.5rem", fontSize: "1rem" }}
-                    onClick={() => {
-                      searchInputRef.current?.focus();
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                  >
-                    Analyze new repo
-                  </button>
-                  <button
-                    className="btn-secondary"
-                    style={{ padding: "0.75rem 1.5rem", fontSize: "1rem" }}
-                    onClick={() => setShowHistory(true)}
-                  >
-                    Open history
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginBottom: "5rem",
-                  maxWidth: "800px",
-                  margin: "0 auto 5rem auto",
-                }}
-              >
-                <h1
-                  className="hero-title"
-                  style={{
-                    fontSize: "4.5rem",
-                    fontWeight: 800,
-                    marginBottom: "1.5rem",
-                    lineHeight: 1.1,
-                    letterSpacing: "-0.04em",
-                    background:
-                      "linear-gradient(to bottom, #fff 0%, #94a3b8 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  Commit with <br />
-                  <span
-                    style={{
-                      color: "var(--accent-primary)",
-                      WebkitTextFillColor: "initial",
-                    }}
-                  >
-                    Confidence
-                  </span>
-                  .
-                </h1>
-                <p
-                  style={{
-                    fontSize: "1.25rem",
-                    color: "var(--text-secondary)",
-                    maxWidth: "540px",
-                    margin: "0 auto",
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Elevate your code quality with instant analysis, gamified
-                  insights, and professional feedback for your git commit
-                  messages.
-                </p>
-              </div>
-            )}
-
-            <InputSection
-              onAnalyze={handleInputSubmit}
-              isLoading={loading}
-              recentSearches={recentSearches}
-              onRemoveRecent={removeFromRecentSearches}
-              onClearHistory={clearHistory}
-              inputRef={searchInputRef}
-            />
-
-            <div
-              className="feature-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: "2rem",
-                marginTop: "8rem",
-                padding: "0 1rem",
-              }}
-            >
-              <FeatureCard
-                icon={<FcFlashOn />}
-                title="Instant Analysis"
-                desc="Get immediate scoring and actionable feedback to improve your commit messages."
-                onClick={() => searchInputRef.current?.focus()}
-              />
-              <FeatureCard
-                icon={<FaGamepad />}
-                title="Gamification"
-                desc="Unlock badges and achievements as you adopt best practices and maintain consistency."
-                onClick={() => setShowHistory(true)}
-              />
-              <FeatureCard
-                icon={<MdInsights />}
-                title="Deep Insights"
-                desc="Visualize your coding habits, time distribution, and project velocity."
-                onClick={() => handleInputSubmit("facebook/react", "repo")}
-              />
-            </div>
-          </div>
-        )}
-        {viewMode === "repoList" && (
-          <div className="animate-in">
-            <button
-              onClick={handleReset}
-              className="btn-ghost"
-              style={{ marginBottom: "1.5rem", paddingLeft: 0 }}
-            >
-              ← Back to Search
-            </button>
-            <UserRepoList
-              repos={userRepos}
-              onSelectRepo={analyzeRepo}
-              username={searchedUser}
-              isLoading={loading}
-            />
-          </div>
-        )}
-        {viewMode === "analysis" && (
-          loading ? (
-            <div style={{ padding: "8rem 2rem", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-              <Loader size={1.5} />
-              <div style={{ color: "var(--text-secondary)", fontSize: "1.1rem" }}>Analyzing repository...</div>
-            </div>
-          ) : (
-          <div className="animate-in">
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "2rem",
-                borderBottom: "1px solid var(--border-subtle)",
-                paddingBottom: "1rem",
-                flexWrap: "wrap",
-                gap: "1rem",
-              }}
-            >
-              <div
-                style={{ display: "flex", gap: "1rem", alignItems: "center" }}
-              >
-                <button
-                  onClick={handleBack}
-                  className="btn-ghost"
-                  style={{ paddingLeft: 0 }}
-                >
-                  ← Back
-                </button>
-                {stats && <ExportButton stats={stats} commits={commits} />}
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "0.5rem",
-                  background: "var(--bg-panel)",
-                  padding: "0.25rem",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--border-subtle)",
-                }}
-              >
-                <TabButton
-                  active={activeTab === "analyze"}
-                  onClick={() => setActiveTab("analyze")}
-                >
-                  Analysis
-                </TabButton>
-                <TabButton
-                  active={activeTab === "playground"}
-                  onClick={() => setActiveTab("playground")}
-                >
-                  Playground
-                </TabButton>
-              </div>
-            </div>
-
-            {activeTab === "analyze" ? (
-              <>
-                {stats && (
-                  <div style={{ position: "relative" }}>
-                    <SummarySection stats={stats} />
-                  </div>
-                )}
-                <CommitList 
-                  key={stats?.repoName ?? ''} 
-                  commits={commits} 
-                  totalCommitsCount={stats?.totalCommits}
-                  isLoading={fetchingMore}
-                  onFetchCommits={handleLoadMoreCommits}
-                />
-              </>
-            ) : (
-              <Playground />
-            )}
-          </div>
-          )
-        )}
-          </>
-        )}
-      </main>
-
-      <HistorySidebar
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-        onSelectRepo={analyzeRepo}
-      />
-
-      <MobileSidebar
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        onOpenHistory={() => setShowHistory(true)}
-        onOpenSettings={() => setShowSettings(true)}
-      />
-    </div>
-  );
+  return <div className="container" id="top">
+    <AppNavbar viewMode={viewMode} historyCount={historyItems.length} isAuthenticated={Boolean(user)} isMobileMenuOpen={isMobileMenuOpen} onHome={goHome} onHistory={() => { if (user) setShowHistory(true); }} onSettings={() => { if (user) setShowSettings(true); }} onAnalyze={focusAnalyzer} onWorkshop={() => navigate("/workshop")} onToggleMobile={() => setIsMobileMenuOpen((open) => !open)} />
+    <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+    <main>
+      {error ? <section className="error-page animate-in"><span><MdErrorOutline /></span><p className="eyebrow">Analysis interrupted</p><h1>We couldn't read that repository.</h1><p>{error.includes("rate limit") ? "GitHub's request limit has been reached. Try again later or add a token." : error}</p><button className="btn-primary" onClick={goHome}>Return to the analyzer</button></section> : <Suspense fallback={<div className="route-loading"><strong>Preparing GitAnalyzer</strong></div>}><Routes>
+        <Route path="/" element={<LandingPage userSignedIn={Boolean(user)} historyItems={historyItems} loading={loading} recentSearches={recentSearches} inputRef={searchInputRef} onAnalyze={handleInputSubmit} onOpenHistory={() => { if (user) setShowHistory(true); }} onRemoveRecent={(input) => setRecentSearches((items) => items.filter((item) => item !== input))} onClearRecent={() => setRecentSearches([])} />} />
+        <Route path="/developers/:username" element={<DeveloperReposPage username={routedUser ?? ""} repos={userRepos} loading={loading} onBack={goHome} onSelectRepo={openRepository} />} />
+        <Route path="/analysis/:owner/:repo" element={<AnalysisPage stats={stats?.repoName === routedRepo ? stats : null} commits={commits} loading={loading} fetchingMore={fetchingMore} onBack={goHome} onWorkshop={() => navigate("/workshop?mode=diff")} onLoadMore={handleLoadMore} />} />
+        <Route path="/workshop" element={<Playground />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes></Suspense>}
+    </main>
+    <HistorySidebar isOpen={showHistory} onClose={() => setShowHistory(false)} onSelectRepo={openRepository} />
+    <MobileSidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} onOpenHistory={() => { if (user) setShowHistory(true); }} onOpenSettings={() => { if (user) setShowSettings(true); }} />
+  </div>;
 }
-
-const TabButton = ({
-  children,
-  active,
-  onClick,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) => (
-  <button
-    onClick={onClick}
-    style={{
-      background: active ? "var(--bg-page)" : "transparent",
-      color: active ? "var(--text-primary)" : "var(--text-secondary)",
-      border: "1px solid",
-      borderColor: active ? "var(--border-subtle)" : "transparent",
-      padding: "0.5rem 1.5rem",
-      borderRadius: "6px",
-      cursor: "pointer",
-      fontWeight: 500,
-      fontSize: "0.9rem",
-      boxShadow: active ? "0 2px 4px rgba(0,0,0,0.05)" : "none",
-      transition: "all 0.2s ease",
-    }}
-  >
-    {children}
-  </button>
-);
-
-const FeatureCard = ({
-  icon,
-  title,
-  desc,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  onClick?: () => void;
-}) => (
-  <div
-    className="panel"
-    onClick={onClick}
-    style={{
-      padding: "1.5rem",
-      cursor: onClick ? "pointer" : "default",
-      transition: "transform 0.2s",
-    }}
-    onMouseEnter={(e) => {
-      if (onClick) e.currentTarget.style.transform = "scale(1.02)";
-    }}
-    onMouseLeave={(e) => {
-      if (onClick) e.currentTarget.style.transform = "none";
-    }}
-  >
-    <div style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>{icon}</div>
-    <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1rem", fontWeight: 600 }}>
-      {title}
-    </h3>
-    <p
-      style={{
-        margin: 0,
-        color: "var(--text-secondary)",
-        fontSize: "0.9rem",
-        lineHeight: 1.5,
-      }}
-    >
-      {desc}
-    </p>
-  </div>
-);
 
 export default App;

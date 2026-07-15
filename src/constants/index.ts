@@ -11,10 +11,8 @@ export const CONSTANTS = {
     RETRY_BASE_DELAY: 1000, // 1 second
   },
   STORAGE: {
-    HISTORY_KEY: 'git_analyzer_history',
     RECENT_SEARCHES_KEY: 'recentSearches',
     THEME_KEY: 'theme',
-    MAX_HISTORY_ITEMS: 20,
     MAX_RECENT_SEARCHES: 8,
   },
   ANIMATION: {
@@ -24,7 +22,7 @@ export const CONSTANTS = {
   },
   SCORE: {
     GOOD_THRESHOLD: 8,
-    WARNING_THRESHOLD: 5,
+    WARNING_THRESHOLD: 6,
     PERFECT_SCORE: 10,
   },
   TIME_PERIODS: {
@@ -58,23 +56,4 @@ export const STATUS_COLORS = {
 export const CONVENTIONAL_TYPES = [
   'feat', 'fix', 'docs', 'style', 'refactor', 
   'perf', 'test', 'build', 'ci', 'chore', 'revert'
-] as const;
-
-export const IMPERATIVE_VERBS = [
-  'add', 'fix', 'update', 'remove', 'change', 
-  'refactor', 'merge', 'create', 'delete', 'implement',
-  'use', 'optimize', 'document', 'correct', 'handle', 
-  'improve', 'clean', 'init', 'release', 'bump', 
-  'revert', 'move', 'rename', 'allow', 'ensure',
-  'prevent', 'avoid', 'simplify', 'upgrade', 'downgrade',
-  'setup', 'configure', 'deploy', 'build', 'test',
-  'verify', 'validate', 'check', 'log', 'start',
-  'stop', 'finish', 'show', 'hide', 'render',
-  'display', 'fetch', 'get', 'set', 'reset'
-] as const;
-
-export const VAGUE_WORDS = [
-  'stuff', 'things', 'changes', 'minor', 'fixes',
-  'misc', 'various', 'bug', 'code', 'temp', 'wip',
-  'work', 'later', 'done', 'fixed', 'added'
 ] as const;

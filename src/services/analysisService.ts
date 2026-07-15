@@ -9,16 +9,22 @@ export interface AnalysisRecord {
   created_at?: string;
 }
 
+const getAuthenticatedUserId = async (): Promise<string | null> => {
+  const { data, error } = await supabase.auth.getUser();
+  return error ? null : data.user?.id ?? null;
+};
+
 /**
  * Save an analysis record to Supabase.
  * Upserts by (user_id, repo_name) so re-analyzing updates the existing row.
  */
 export const saveAnalysisToCloud = async (
-  userId: string,
   repoName: string,
   avgScore: number,
   totalCommits: number
 ): Promise<boolean> => {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return false;
   const { error } = await supabase
     .from('analyses')
     .upsert(
@@ -42,7 +48,9 @@ export const saveAnalysisToCloud = async (
 /**
  * Fetch all analyses for a user, sorted by newest first.
  */
-export const fetchUserAnalyses = async (userId: string): Promise<AnalysisRecord[]> => {
+export const fetchUserAnalyses = async (): Promise<AnalysisRecord[]> => {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return [];
   const { data, error } = await supabase
     .from('analyses')
     .select('*')
@@ -60,9 +68,10 @@ export const fetchUserAnalyses = async (userId: string): Promise<AnalysisRecord[
  * Delete a specific analysis record.
  */
 export const deleteAnalysisFromCloud = async (
-  userId: string,
   repoName: string
 ): Promise<boolean> => {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return false;
   const { error } = await supabase
     .from('analyses')
     .delete()
