@@ -58,8 +58,17 @@ export const AppNavbar = ({
   <header className="app-navbar">
     <div className="navbar-shell">
       <button type="button" className="navbar-brand" onClick={onHome} aria-label="Go to GitAnalyzer home">
-        <span className="navbar-mark"><i /><i /><i /></span>
-        <span><strong>GitAnalyzer</strong><small>Commit intelligence</small></span>
+        <span className="navbar-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" focusable="false">
+            <path className="navbar-mark-tile" d="M10 4h22l12 12v22a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6V10a6 6 0 0 1 6-6Z" />
+            <path className="navbar-mark-path" d="m14 33 10-11 10-8M24 22l10 11" />
+            <circle className="navbar-mark-node" cx="14" cy="33" r="3" />
+            <circle className="navbar-mark-node" cx="24" cy="22" r="3" />
+            <circle className="navbar-mark-node" cx="34" cy="14" r="3" />
+            <circle className="navbar-mark-node" cx="34" cy="33" r="3" />
+          </svg>
+        </span>
+        <span className="navbar-wordmark"><strong>Git<span>Analyzer</span></strong><small>Commit intelligence</small></span>
       </button>
 
       <nav className="navbar-links desktop-only" aria-label="Primary navigation">

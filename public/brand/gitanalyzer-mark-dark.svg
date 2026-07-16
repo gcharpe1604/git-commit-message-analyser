@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title">
+  <title id="title">GitAnalyzer</title>
+  <path fill="#d9ff43" d="M10 4h22l12 12v22a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6V10a6 6 0 0 1 6-6Z"/>
+  <path fill="none" stroke="#171b0b" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="m14 33 10-11 10-8M24 22l10 11"/>
+  <g fill="#d9ff43" stroke="#171b0b" stroke-width="2.5">
+    <circle cx="14" cy="33" r="3"/><circle cx="24" cy="22" r="3"/><circle cx="34" cy="14" r="3"/><circle cx="34" cy="33" r="3"/>
+  </g>
+</svg>
