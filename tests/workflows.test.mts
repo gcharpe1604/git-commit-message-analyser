@@ -7,6 +7,7 @@ import {
   buildRepositoryAnalysisPath,
   buildRepositoryWorkshopPath,
   getAnalysisBackPath,
+  parseRepoName,
 } from "../src/utils/routes.ts";
 
 test("repository routes preserve how the user reached an analysis", () => {
@@ -23,6 +24,18 @@ test("repository routes preserve how the user reached an analysis", () => {
   assert.equal(
     buildRepositoryAnalysisPath("octocat/hello-world", "?fromDeveloper=octocat"),
     "/analysis/octocat/hello-world?fromDeveloper=octocat",
+  );
+});
+
+test("repository parsing ignores query strings and fragments in GitHub URLs", () => {
+  assert.deepEqual(parseRepoName("https://github.com/facebook/react?tab=readme-ov-file#readme"), {
+    owner: "facebook",
+    repo: "react",
+    fullName: "facebook/react",
+  });
+  assert.equal(
+    buildAnalysisPath("https://github.com/facebook/react.git?tab=readme-ov-file"),
+    "/analysis/facebook/react",
   );
 });
 

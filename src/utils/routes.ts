@@ -1,4 +1,14 @@
-const cleanRepoName = (value: string) => value.trim().replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
+const cleanRepoName = (value: string) => {
+  const trimmed = value.trim();
+
+  try {
+    const url = new URL(trimmed);
+    if (!/^(?:www\.)?github\.com$/i.test(url.hostname)) return trimmed;
+    return url.pathname.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
+  } catch {
+    return trimmed.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
+  }
+};
 
 export const parseRepoName = (value: string): { owner: string; repo: string; fullName: string } | null => {
   const [owner, repo, ...rest] = cleanRepoName(value).split("/");
