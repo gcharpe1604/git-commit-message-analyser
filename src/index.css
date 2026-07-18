@@ -296,8 +296,9 @@ button:disabled { cursor: not-allowed; opacity: .45; transform: none !important;
 .score-overview { display: grid; grid-template-columns: 1fr 1.35fr; min-height: 250px; border: 1px solid var(--border-active); }
 .score-hero { display: flex; flex-direction: column; justify-content: space-between; padding: 24px; border-right: 1px solid var(--border-active); }
 .score-hero > span, .context-item span, .metric-card span { color: var(--text-tertiary); font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; }
+.score-hero > div { display: flex; min-width: 0; align-items: baseline; gap: 12px; }
 .score-hero strong { font-size: clamp(78px, 10vw, 128px); line-height: .8; letter-spacing: -.09em; }
-.score-hero small { color: var(--text-tertiary); }
+.score-hero small { flex: 0 0 auto; color: var(--text-tertiary); }
 .score-hero p { margin: 0; font-size: 13px; font-weight: 700; }
 .score-context { display: grid; grid-template-columns: 1fr 1fr; }
 .context-item { display: flex; flex-direction: column; justify-content: flex-end; padding: 24px; }
